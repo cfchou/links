@@ -1,0 +1,23 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
+"http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
+<svg width="400px" height="250px" >
+ <script type="text/javascript">
+ <![CDATA[
+   function createShape(evt) {
+     var SVGDoc  = evt.getTarget().getOwnerDocument();
+     var SVGRoot = SVGDoc.getDocumentElement();
+     var myShape;
+     
+     myShape = SVGDoc.createElement("circle");
+     myShape.setAttribute("cx", 125);
+     myShape.setAttribute("cy", 125);
+     myShape.setAttribute("r",  50);
+     myShape.setAttribute("style", "fill: #FFCCCC; stroke:#FF0000");
+     SVGRoot.appendChild(myShape);
+     }
+     ]]>
+ </script>
+<circle cx="60px" cy="100px" r="50px" style="fill:white; stroke:red; stroke-width:4"
+ onclick="createShape(evt)"/>
+</svg>

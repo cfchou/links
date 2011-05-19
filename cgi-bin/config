@@ -1,0 +1,4 @@
+jsliburl=http://localhost/~cfchou/jslib/
+prelude=/Users/cfchou/project/trunk/prelude.links
+database_driver=postgresql
+database_args=localhost:5432:postgres:

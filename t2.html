@@ -1,0 +1,56 @@
+<html>
+<head>
+<title>SVG Basics</title>
+<style type="text/css">
+
+#svgbasics { width: 400px; height: 300px; border: 1px solid #484; }
+</style>
+<script type="text/javascript">
+
+/*
+$(function() {
+	$('#svgbasics').svg({onLoad: drawInitial});
+});
+
+function drawInitial(svg) {
+	svg.circle(75, 75, 50, {fill: 'none', stroke: 'red', 'stroke-width': 3});
+	var g = svg.group({stroke: 'black', 'stroke-width': 2});
+	svg.line(g, 15, 75, 135, 75);
+	svg.line(g, 75, 15, 75, 135);
+}
+*/
+
+
+function drawOnDiv() {
+    var mydiv = document.getElementById("svgbasics");
+    attachSVG(mydiv);
+}
+
+function attachSVG(container) {
+    var svgE = document.createElementNS('http://www.w3.org/2000/svg',
+        'svg');
+    svgE.setAttribute('version', '1.1');
+    svgE.setAttribute('width', container.clientWidth);
+    svgE.setAttribute('height', container.clientHeight);
+    container.appendChild(svgE);
+
+    var node = svgE.ownerDocument.createElementNS('http://www.w3.org/2000/svg',
+        'circle');
+    node.setAttribute('cx', '100');
+    node.setAttribute('cy', '100');
+    node.setAttribute('r', '50');
+    node.setAttribute('fill', 'red');
+    node.setAttribute('stroke', 'black');
+    node.setAttribute('stroke-width', '5');
+    svgE.appendChild(node);
+}
+
+
+</script>
+</head>
+<body> 
+<div id="svgbasics">
+<svg version="1.1" width="400" height="300"><circle cx="100" cy="100" r="50" fill="red" stroke="black" stroke-width="5"/></svg>
+</div>
+</body>
+</html>

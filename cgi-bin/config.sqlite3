@@ -1,0 +1,3 @@
+jsliburl=http://localhost/~cfchou/jslib/
+prelude=/Users/cfchou/project/trunk/prelude.links
+database_driver=sqlite3
