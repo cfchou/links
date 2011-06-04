@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" 
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1"
 xmlns:xlink="http://www.w3.org/1999/xlink" 
-xmlns:svg="http://www.w3.org/2000/svg" id="canvas"
-width="800px" height="600px" >
-    <circle cx="60px" cy="100px" r="50px"
+id="canvas" width="800px" height="600px" viewbox="0 0 800 600">
+    <circle id="c1" cx="60" cy="100" r="50"
     style="fill:white; stroke:red; stroke-width:4" />
+    <animate xlink:href="#c1" attributeName="cx" 
+    begin="0s" dur="5s" from="60" to="300" /> 
 </svg>
