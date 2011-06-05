@@ -2,8 +2,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1"
 xmlns:xlink="http://www.w3.org/1999/xlink" 
 id="canvas" width="800px" height="600px" viewbox="0 0 800 600">
-    <circle id="c1" cx="60" cy="100" r="50"
-    style="fill:white; stroke:red; stroke-width:4" />
+<defs>
+</defs>
+    <circle id="c1" cx="60" cy="60" r="30"
+    style="fill:yellow; stroke:red; stroke-width:4" />
     <animate xlink:href="#c1" attributeName="cx" 
-    begin="0s" dur="5s" from="60" to="300" /> 
+    begin="click" dur="5s" from="60" to="300" /> 
+
+    <path id="path1" d="M100,250 C 100,50 400,50 400,250"
+            fill="none" stroke="blue" stroke-width="7.06"  />
+
+    <circle id="c2" cx="60" cy="160" r="30"
+    style="fill:yellow; stroke:red; stroke-width:4" />
+    <animateMotion xlink:href="#c2" dur="5s" 
+    repeatCount="indefinite" rotate="auto" >
+    <mpath xlink:href="#path1"/>
+    </animateMotion>
 </svg>
