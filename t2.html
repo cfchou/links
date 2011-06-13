@@ -21,29 +21,6 @@ function drawInitial(svg) {
 */
 
 
-function drawOnDiv() {
-    var mydiv = document.getElementById("svgbasics");
-    attachSVG(mydiv);
-}
-
-function attachSVG(container) {
-    var svgE = document.createElementNS('http://www.w3.org/2000/svg',
-        'svg');
-    svgE.setAttribute('version', '1.1');
-    svgE.setAttribute('width', container.clientWidth);
-    svgE.setAttribute('height', container.clientHeight);
-    container.appendChild(svgE);
-
-    var node = svgE.ownerDocument.createElementNS('http://www.w3.org/2000/svg',
-        'circle');
-    node.setAttribute('cx', '100');
-    node.setAttribute('cy', '100');
-    node.setAttribute('r', '50');
-    node.setAttribute('fill', 'red');
-    node.setAttribute('stroke', 'black');
-    node.setAttribute('stroke-width', '5');
-    svgE.appendChild(node);
-}
 
 
 </script>

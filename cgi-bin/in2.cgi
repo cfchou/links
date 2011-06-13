@@ -1,12 +1,21 @@
 #!/Users/cfchou/project/trunk/links --config=/Users/cfchou/Sites/cgi-bin/config
 
 
-fun drawOnDiv() client { 
-    if (not (pressed())) {
+# animate can't use xlink
+# <animate xlink:href="#c1" ...
+fun drawAnimate() client { 
+    if (not (pressed("drawAnimate"))) {
         appendChildren(
-            <svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="svg1">
-            <circle xmlns="http://www.w3.org/2000/svg" cx="100px" cy="100px" r="50px"
-            style="fill:red; stroke:black; stroke-width:5" />
+            <svg xmlns="http://www.w3.org/2000/svg" version="1.1" 
+            xmlns:xlink="http://www.w3.org/1999/xlink" 
+            id="svg1" width="300px" height="300px" viewbox="0 0 300 300">
+            <circle xmlns="http://www.w3.org/2000/svg" 
+            id="c1" cx="60" cy="100" r="50"
+            style="fill:red; stroke:black; stroke-width:5" >
+                <animate xmlns="http://www.w3.org/2000/svg"  
+                attributeName="cx" 
+                begin="click" dur="5s" from="60" to="200" /> 
+            </circle>
             </svg>,
             getNodeById("svgbasics"));
     } else {
@@ -14,12 +23,12 @@ fun drawOnDiv() client {
     }
 }
 
-fun pressed() client {
-    if ("pressed" == getCookie("pressed101")) {
-        setCookie("pressed101", "");
+fun pressed(s) client {
+    if (s == getCookie(s)) {
+        setCookie(s, "");
         true
     } else {
-        setCookie("pressed101", "pressed");
+        setCookie(s, s);
         false
     }
 }
@@ -34,8 +43,8 @@ page
 </head>
 
 <body>
-<button id="press" type="button" l:onclick="{drawOnDiv()}">draw</button>
-
-<div id="svgbasics"></div>
+<button id="press1" type="button" l:onclick="{drawAnimate()}">draw animate</button>
+<div id="svgbasics">
+</div>
 </body>
  </html>

@@ -18,4 +18,9 @@ id="canvas" width="800px" height="600px" viewbox="0 0 800 600">
     repeatCount="indefinite" rotate="auto" >
     <mpath xlink:href="#path1"/>
     </animateMotion>
+
+
+    <image id="img1" x="60" y="260" width="200" height="150" 
+    xlink:href="photos_files/535566372_33c1025c7b_o.jpg"/> 
+
 </svg>

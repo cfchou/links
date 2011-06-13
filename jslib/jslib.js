@@ -511,7 +511,7 @@ _debug("Note: environmentless function resolved");
       DEBUG.assert(DEBUG.is_array(xmlForest),
                    'LINKS.XmlToDomNodes expected an array, but got ' + 
                    xmlForest);
-      return LINKS.map(LINKS.singleXmlToDomNodes, xmlForest);
+      return LINKS.map(LINKS.singleXmlToDomNodes(null), xmlForest);
     },
     
     /// XML
@@ -766,17 +766,17 @@ _debug("Note: environmentless function resolved");
   //    }
   //  };
 
-  LINKS.singleXmlToDomNodes = function (xmlObj) {
+  LINKS.singleXmlToDomNodes = function (namespace) {return function (xmlObj) {
     DEBUG.assert(DEBUG.is_array(xmlObj),
                  'LINKS.singleXmlToDomNodes expected an array, but got ' + xmlObj);
     if (xmlObj[0] == "ELEMENT") {
       var tag = xmlObj[1];
       var attrs = xmlObj[2];
       var body = xmlObj[3];
-      //var node = document.createElement(tag);
 
       var node = null;
-      var namespace = attrs['xmlns'];
+      if(attrs['xmlns'])
+        namespace = attrs['xmlns'];
 
       // HACK: this allows us to provide some support for content such as SVG
       if (namespace) {
@@ -817,12 +817,18 @@ _debug("Note: environmentless function resolved");
         if(name == 'style' && node.style) {
           // (IE) preserve style attributes in IE
           node.style.cssText = $str(attrs['style']);
+
+        // [HACK] for xlink in SVG
+        } else if (0 == name.indexOf("xlink")) {
+                node.setAttributeNS("http://www.w3.org/1999/xlink",
+                    name, $str(attrs[name]));
+
         } else {
-          node.setAttribute(name, $str(attrs[name]));
+                node.setAttribute(name, $str(attrs[name]));
         }
       }
       for (var i = 0; i < body.length; i++) {
-        var child = LINKS.singleXmlToDomNodes(body[i]);
+        var child = LINKS.singleXmlToDomNodes(namespace)(body[i]);
         node.appendChild(child);
       }
       return node;
@@ -832,7 +838,7 @@ _debug("Note: environmentless function resolved");
       throw "unknown XML node " + xmlObj[0] + " in LINKS.singleXmlToDomNodes"
     }
 
-  };
+  }};
 
   LINKS.eq = function(l,r) {
     if (l == r)
