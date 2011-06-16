@@ -1,15 +1,17 @@
 #!/Users/cfchou/project/trunk/links --config=/Users/cfchou/Sites/cgi-bin/config
+
 typename Time = Int;
+#??
 #typename IntB() = ((Int) -> Int);
 #typename Behaviour (a) = (Time) -> a;
 
 
+
+# [API] =====================================
 var id=1;
 fun lastId () {
     id + 1
 }
-
-### API =====================================
 
 fun lift0(a) {
     fun(t) {
@@ -17,49 +19,18 @@ fun lift0(a) {
     }
 }
 
-fun createSsvg(w, h) {
+fun createSvg(w, h) {
         "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" 
         id=\"svg1\" width=\"800px\" height=\"300px\"
         viewbox=\"0 0 800 300\"> </svg>"
 }
 
-fun createScircle(x, y, r) {
+fun createCircle(x, y, r) {
     var id = "c" ^^ intToString(lastId()); 
     "<circle xmlns=\"http://www.w3.org/2000/svg\" id=\"" ^^ id ^^
     "\" cx=\"" ^^ intToString(x) ^^ "\" cy=\"" ^^ intToString(y) ^^
     "\" r=\"" ^^ intToString(r) ^^
     "\"style=\"fill:red; stroke:black; stroke-width:5\"> </circle>"
-}
-
-fun create_svg(w, h) {
-        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" 
-        id="svg1" width="800px" height="300px"
-        viewbox="0 0 800 300" />
-}
-
-fun create_circle(x, y, r) {
-    <circle xmlns="http://www.w3.org/2000/svg" 
-    id="{"c" ^^ intToString(lastId())}" cx="{intToString(x)}" 
-    cy="{intToString(y)}" r="{intToString(r)}"
-    style="fill:red; stroke:black; stroke-width:5" />
-}
-
-
-fun split (x, y, z, ary) {
-    rsplit(x, y, z, [], ary)
-}
-
-fun rsplit (x, y, z, prev, rest) {
-    switch (rest) {
-        case ([]) -> (prev ++ rest, [])
-        case (_::[]) -> (prev ++ rest, [])
-        case (_::_::[]) -> (prev ++ rest, [])
-        case (a::b::c::xs) -> if (a == x && b == y && c == z) {
-                               (prev, xs)
-                           } else {
-                               rsplit(x, y, z, prev ++ (a::b::c::[]), xs) 
-                           }
-    }
 }
 
 fun moveCircle(xB, yB, circleB) {
@@ -80,30 +51,6 @@ fun moveCircle(xB, yB, circleB) {
    }
 }
 
-# ??
-#sig moveCircle1 : ((Int) -> Int, (Int) -> Int, (Int) -> String) -> (Int) -> Xml
-fun moveCircle1(xB, yB, circleB) {
-   fun (t) {
-       var cirXml = circleB(t);
-       var x = xB(t);
-       var y = yB(t);
-       var convert = fun ((name, value)) {
-                        if (name == "cx") {
-                            (name, intToString(x))
-                        } else if (name == "cy") {
-                            (name, intToString(y))
-                        } else {
-                            (name, value)
-                        }
-                     };
-       var attrs = reverse(map(convert, getAttributes(cirXml)));
-       #var attrs2 = concatMap(fun ((a, b)) { a ^^ "=\"" ^^ b ^^ "\"" }, attrs);
-       var attrs2 = for ((name, value) <- attrs)
-                        [name ^^ "=\"" ^^ value ^^ "\" "];
-       stringToXml("<circle " ^^ fold_left1((^^), attrs2) ^^ "/>")
-   }
-}
-
 fun contain(parentB, childB) {
     fun (t) {
         var paChars = explode(parentB(t));
@@ -114,36 +61,41 @@ fun contain(parentB, childB) {
     }
 }
 
-fun test1(parentB) {
-    fun (t) {
-        var paXml = parentB(t);
-        getChildNodes(paXml)
+# [FIX] =====================================
+fun split (x, y, z, ary) {
+    rsplit(x, y, z, [], ary)
+}
+
+fun rsplit (x, y, z, prev, rest) {
+    switch (rest) {
+        case ([]) -> (prev ++ rest, [])
+        case (_::[]) -> (prev ++ rest, [])
+        case (_::_::[]) -> (prev ++ rest, [])
+        case (a::b::c::xs) -> if (a == x && b == y && c == z) {
+                               (prev, xs)
+                           } else {
+                               rsplit(x, y, z, prev ++ (a::b::c::[]), xs) 
+                           }
     }
 }
 
-fun foo(t) {
-    var svgB = lift0(create_svg(800, 600));
-    var cir1 = lift0(create_circle(50, 100, 50));
-
-    var svgXml = svgB(t);
-    var name = getAttribute(svgXml, "id");
-    replaceNode(svgXml, getNodeById(name)); 
+# ??
+#sig foo2 : (Int, (Int) -> Int) -> ((Int) -> Int)
+fun foo2(a, f) {
+    fun(t) {
+        var b = f(a);
+        b
+    }
 }
 
-fun foo1 () {
-   var cir1 = lift0(create_circle(50, 100, 50)); 
-   var x = lift0(200);
-   var y = lift0(100);
-   moveCircle1(x, y, cir1)
-}
-
+# [COMPOSE] =====================================
 
 fun compose() {
-    var cirB = lift0(createScircle(50, 100, 50));
-    var svgB = lift0(createSsvg(800, 600));
+    var svgB = lift0(createSvg(800, 600));
+    var cirB = lift0(createCircle(50, 100, 50));
 
     # need to overload (*) and other arithmetic operators for behaviours
-    var xB = fun (t) { 5 * t };
+    var xB = fun (t) { 50 + 5 * t };
 
     var yB = lift0(100);
 
@@ -151,15 +103,30 @@ fun compose() {
     svgB `contain` cirMovingB
 }
 
+fun compose2() {
+    var svgB = lift0(createSvg(800, 600));
+    var cirB = lift0(createCircle(50, 100, 50));
+    var cir2B = lift0(createCircle(500, 100, 50));
 
-#============================================
+    var xB = fun (t) { 50 + 5 * t };
+    var x2B = fun (t) { var cx = 500 - 5 * t;
+                        if (cx > 50)
+                            cx
+                        else
+                            50
+                      };
+
+    var yB = lift0(100);
+
+    var cirMovingB = moveCircle(xB, yB, cirB);
+    var cirMoving2B = moveCircle(x2B, yB, cir2B);
+    (svgB `contain` cirMovingB) `contain` cirMoving2B
+}
+
+# [WEB] ==========================================
 
 fun drawImage1(t0, t1) client {
     if (not (pressed("drawImage1"))) {
-        #var svgB = lift0(create_svg(800, 600));
-        #var svgBXml = svgB(0);
-        #
-        #var svgB = createSsvgB(800, 600);
         var svgB = compose();
         var svgBXml = parseXml(svgB(0));
 
@@ -184,10 +151,6 @@ fun doDrawImage1(t0, nFrame) client {
             doDrawImage1(t0, nFrame);
         } else {
                 if (nFrame < maxFrame) {
-                    #var svgB = lift0(create_svg(800, 600));
-                    #var svgBXml = svgB(nFrame);
-                    #
-                    #var svgB = createSsvgB(800, 600);
                     var svgB = compose();
                     var svgBXml = parseXml(svgB(nFrame));
 
@@ -200,42 +163,6 @@ fun doDrawImage1(t0, nFrame) client {
         }
     } else {
         #error(intToString(now) ^^ ":" ^^ intToString(t0));
-    }
-}
-
-fun createSsvgB(w, h) {
-    fun (t) {
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" 
-        id=\"svg1\" width=\"800px\" height=\"300px\"
-        viewbox=\"0 0 800 300\">
-            <circle xmlns=\"http://www.w3.org/2000/svg\" 
-            id=\"c1\" cx=\"" ^^ intToString(50 + t * 5) ^^ 
-            "\" cy=\"100\" r=\"50\"
-            style=\"fill:red; stroke:black; stroke-width:5\" />
-        </svg>"
-    }
-}
-
-fun create_svgB(w, h) {
-    fun (t) {
-        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" 
-        id="svg1" width="800px" height="300px"
-        viewbox="0 0 800 300">
-            <circle xmlns="http://www.w3.org/2000/svg" 
-            id="c1" cx="{intToString(50 + t * 5)}" 
-            cy="100" r="50"
-            style="fill:red; stroke:black; stroke-width:5" />
-        </svg>
-    }
-}
-
-
-# ??
-#sig foo2 : (Int, (Int) -> Int) -> ((Int) -> Int)
-fun foo2(a, f) {
-    fun(t) {
-        var b = f(a);
-        b
     }
 }
 
