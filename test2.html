@@ -1,0 +1,23 @@
+ <html>
+  <body>
+<svg width="12cm" height="10cm" viewbox="0 0 1000 300">
+
+<defs><linearGradient id="orange_red" x2="0" y2="1">
+<stop stop-color="yellow"></stop>
+<stop offset="1" stop-color="red"></stop>
+</linearGradient></defs>
+
+<path id="MyPath" 
+d="M 100 200 C 200 100 300 0 400 100 C 500 200 600 300 700 200 C 800 100 900 100 900 100" 
+fill="none" stroke="red"></path>  
+
+<text font-family="Verdana" font-size="72.5" fill="url(#orange_red)">
+<textPath xlink:href="#MyPath">SVG in HTML5 Browser</textPath>
+</text>
+
+<image id="img1" x="60" y="260" width="200" height="150" 
+xlink:href="photos_files/535566372_33c1025c7b_o.jpg"/> 
+
+</svg>
+</body>
+</html>
