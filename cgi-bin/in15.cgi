@@ -7,16 +7,6 @@
 typename Beh(a) = (Float){}~>a;
 #typename Beh(a) = forall e::Row. (Float)~e~>a;
 
-# ?? contains(elm1B, elm2B) 
-
-# ??
-#sig foo2 : (Int, (Int) -> Int) -> ((Int) -> Int)
-fun foo2(a, f) {
-    fun(t) {
-        var b = f(a);
-        b
-    }
-}
 
 # [API] =====================================
 fun newId () {
@@ -30,16 +20,6 @@ fun newId () {
         newid
     }
 }
-
-
-# ===================================================================
-#fun test((xxB:((Int) -> Int), yyB:((Int) -> Int))) {
-#    fun (t) {
-#        xxB(t);
-#        yyB(t)
-#    }
-#}
-
 
 sig const : (a) -> Beh(a)
 fun const(v) { fun (t:Float) { v } }
@@ -104,9 +84,6 @@ fun combineA(elm1B, elm2B) {
 }
 
 fun circleA(id) {
-    #(a:(Int) -> Int,b:Int)
-    #fun ((xB:((Int) -> Int), yB:((Int) -> Int), wB:((Int) -> Int), 
-    #    hB:((Int) -> Int))) 
     fun (xB, yB, wB, hB) {
         fun (t:Float) {
             var x = floatToInt(xB(t));
@@ -166,17 +143,6 @@ fun svgA (id, elmB, wB, hB) {
 }
 
 # [COMPOSE] ==========================================
-
-#var wiggleA = fun (t:Int) {
-#                  var tt = floatToInt(intToFloat(t) /. 500.0);
-#                  sin(intToFloat(tt))
-#              };
-#var waggleA = fun (t:Int) {
-#                  var tt = floatToInt(intToFloat(t) /. 500.0);
-#                  cos(intToFloat(tt))
-#              };
-
-# [FIX]
 
 var wiggleA = sin;
 var waggleA = cos;
@@ -253,6 +219,8 @@ fun pressed(s) client {
     }
 }
 
+# ====================
+
 #sig drawing : (?, forall e::Row. (Float) ~e~> Xml, ?, ?) {:[|Latest:Int|j|]|k}~> ?
 sig drawing : (?, Beh(Xml), ?, ?) {:[|Latest:Int|j|]|k}~> ?
 fun drawing(mouseMgr, scene, t0, tEnd) client {
@@ -265,14 +233,6 @@ fun drawing(mouseMgr, scene, t0, tEnd) client {
         }
         case _ -> 
             drawing(mouseMgr, scene, t0, tEnd)
-    }
-}
-
-fun foo () {
-    var a = intToFloat(100);
-    receive {
-        case NO -> a
-        case _ -> a
     }
 }
 
@@ -315,10 +275,8 @@ fun container() client {
     <button id="press1" type="button" 
     l:onclick="{
                    var t = clientTime(); 
-                   
                    var proc = spawn { 
                        drawing(mouseMgr, scene, t, t + 10000)};
-
                    mouseMgr ! Update(t, proc);
                }">draw image1</button>
 
