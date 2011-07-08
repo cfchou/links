@@ -59,7 +59,7 @@ fun over(elm1B, elm2B) {
     }
 }
 
-fun moveC(elmB, xB, yB) {
+fun move(elmB, xB, yB) {
     fun (attr:(posX:Beh(Float), posY:Beh(Float) |_)) {
         fun (t:Float) {
             var new = (attr with posX = attr.posX `fAddB` xB,
@@ -70,7 +70,7 @@ fun moveC(elmB, xB, yB) {
     }
 }
 
-fun stretchC(elmB, wB, hB) {
+fun stretch(elmB, wB, hB) {
     fun (attr:(width:Beh(Float), height:Beh(Float) |_)) {
         fun (t:Float) {
             var new = (attr with width = attr.width `fAddB` wB,
@@ -150,14 +150,22 @@ fun rect(id) {
 fun ellipse(id) {
     fun (attr:(posX:Beh(Float), posY:Beh(Float), width:Beh(Float), 
                height:Beh(Float), color:Beh(String),
-               stroke:Beh(String), strokeWidth:Beh(Float) |_)) {
+               stroke:Beh(String), strokeWidth:Beh(Float),
+               roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) {
         fun (t:Float) {
             var x = floatToInt(attr.posX(t));
             var y = floatToInt(attr.posY(t));
             var w = floatToInt(attr.width(t) /. 2.0);
             var h = floatToInt(attr.height(t) /. 2.0);
             var s = floatToInt(attr.strokeWidth(t));
+
+            var a = intToString(floatToInt(attr.roAngle(t)));
+            var (i, j) = attr.roAbout(t);
+            var ri = intToString(floatToInt(i));
+            var rj = intToString(floatToInt(j));
+
             <ellipse id="{id}"  
+            transform="rotate({a}, {ri}, {rj})"
             cx="{intToString(x)}" 
             cy="{intToString(y)}"
             rx="{intToString(w)}"
@@ -168,16 +176,23 @@ fun ellipse(id) {
     }
 }
 
-fun imageC(id) {
+fun image(id) {
     fun (attr:(posX:Beh(Float), posY:Beh(Float), width:Beh(Float), 
-               height:Beh(Float), hrefImg:Beh(String) |_)) {
+               height:Beh(Float), hrefImg:Beh(String),
+               roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) {
         fun (t:Float) {
             var x = floatToInt(attr.posX(t));
             var y = floatToInt(attr.posY(t));
             var w = floatToInt(attr.width(t));
             var h = floatToInt(attr.height(t));
 
+            var a = intToString(floatToInt(attr.roAngle(t)));
+            var (i, j) = attr.roAbout(t);
+            var ri = intToString(floatToInt(i));
+            var rj = intToString(floatToInt(j));
+
             <image id="{id}" 
+            transform="rotate({a}, {ri}, {rj})"
             x="{intToString(x)}" 
             y="{intToString(y)}" 
             width="{intToString(w)}" 
@@ -187,7 +202,7 @@ fun imageC(id) {
     }
 }
 
-fun svgC (id, elmB, wB, hB) {
+fun svg(id, elmB, wB, hB) {
     fun (t:Float) {
         var sw = intToString(floatToInt(wB(t)));
         var sh = intToString(floatToInt(hB(t)));
@@ -219,7 +234,7 @@ fun compose() {
     var h = (const(60.0) `fMulB` pWiggleA) `fAddB` const(60.0);
     var luigi = const("photos_files/Paperluigi.png");
 
-    var m1 = stretchC(moveC(imageC("m1") `withImg` luigi,
+    var m1 = stretch(move(image("m1") `withImg` luigi,
                             const(400.0), const(100.0)),
                 slowerB(const(300.0), w),
                 slowerB(const(300.0), h));
@@ -229,7 +244,7 @@ fun compose() {
     var y = (const(200.0) `fMulB` pWaggleA) `fAddB` const(50.0);
     var mario = const("photos_files/super_mario_theme.png");
 
-    var m2 = stretchC(moveC(imageC("m2"),
+    var m2 = stretch(move(image("m2"),
                             slowerB(const(1500.0), x),
                             slowerB(const(500.0), y)),
                 const(100.0), const(100.0)) `withImg` mario;
@@ -237,15 +252,15 @@ fun compose() {
     #-- circle
     var chubby = (const(60.0) `fMulB` wiggleA) `fAddB` const(40.0);
     var chubby2 = slowerB(const(500.0), chubby);
-    var d1 = moveC(ellipse("d1"), const(100.0), const(100.0)); 
-    var d2 = stretchC(d1, chubby2, chubby2) `withColor` const("red");
+    var d1 = move(ellipse("d1"), const(100.0), const(100.0)); 
+    var d2 = stretch(d1, chubby2, chubby2) `withColor` const("red");
 
     #-- rectangle
-    var r1 = stretchC(moveC(rect("r1"), const(100.0), const(100.0)),
+    var r1 = stretch(move(rect("r1"), const(100.0), const(100.0)),
                     chubby2, chubby2);
     var r2 = rotateAbout(r1, const(45.0), const((100.0, 100.0)));
 
-    svgC("svg1",
+    svg("svg1",
         d2 `over` r2 `over` m1 `over` m2,
         const(800.0), const(600.0))
 }
