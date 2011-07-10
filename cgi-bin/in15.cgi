@@ -183,31 +183,6 @@ fun compose() {
 
 
 # [WEB] ==========================================
-fun drawImage(mouseMgr, scene, t0, tEnd) client {
-    if (not (pressed("drawImage"))) {
-
-        var svgXml = scene(intToFloat(clientTime()));
-        appendChildren(svgXml, getNodeById("svgbasics"));
-        doDrawImage(scene, t0, tEnd);
-
-    } else {
-        mouseMgr ! Stop;
-    }
-}
-
-fun doDrawImage(scene, t0, tEnd) client {
-    var now = clientTime();
-    if (now < tEnd) {
-            var svgXml = scene(intToFloat(now));
-
-            var name = getAttribute(svgXml, "id");
-            replaceNode(svgXml, getNodeById(name)); 
-            
-            doDrawImage(scene, t0, tEnd);
-    } else {
-        #error(intToString(now) ^^ ":" ^^ intToString(t0));
-    }
-}
 
 fun pressed(s) client {
     if (s == getCookie(s)) {
@@ -219,77 +194,74 @@ fun pressed(s) client {
     }
 }
 
-# ====================
-
-#sig drawing : (?, forall e::Row. (Float) ~e~> Xml, ?, ?) {:[|Latest:Int|j|]|k}~> ?
-sig drawing : (?, Beh(Xml), ?, ?) {:[|Latest:Int|j|]|k}~> ?
-fun drawing(mouseMgr, scene, t0, tEnd) client {
+fun evtMgr(evts) client {
     receive {
-        case Latest(t) -> {
-            var svgXml = (scene : ((Float)~?~>Xml) <- Beh(Xml))(intToFloat(t));
-            appendChildren(svgXml, getNodeById("svgbasics"));
-            drawing(mouseMgr, scene, t0, tEnd)
-            #doDrawImage(scene, t0, tEnd)
-        }
-        case _ -> 
-            drawing(mouseMgr, scene, t0, tEnd)
+        case MDraw(proc) -> 
+            var new = (clientTime(), EDraw);
+            proc ! B(new::evts);
+            evtMgr([])
+        case MMove(new) ->
+            evtMgr(new::evts)
+        case MClick(new) ->
+            evtMgr(new::evts)
+        case _ ->
     }
 }
 
-fun updating(proc, lst) client {
-       receive {
-           case MouseMove(t, (x, y)) ->
-                #error("MouseMove");
-                updating(proc, (t, Move(x, y))::lst) 
-           case MouseClick(t, (x, y)) ->
-                #error("MouseClick");
-                updating(proc, (t, Click(x, y))::lst)
-#           case Lookup(t) ->
-#                #error(intToString(t));
-#                proc ! lst;
-#                updating(proc, lst)
-           case Stop ->
-                waiting([])
-           case _ ->
-                updating(proc, lst)
-       }
+fun drawInit(mgr, scene, dura, (t, EDraw)::evts) client {
+    if (not (pressed("drawImage"))) {
+        var svgXml = (scene : ((Float)~?~>Xml) <- Beh(Xml))(intToFloat(t));
+        appendChildren(svgXml, getNodeById("svgbasics"));
+
+        mgr ! MDraw(self());
+        draw(mgr, scene, t + dura)
+    } else {
+        removeNode(getNodeById("svg1"));
+    }
 }
 
-fun waiting(lst) client {
-       receive {
-           case Update(t, proc) ->
-                #error(intToString(t) ^^ ":" ^^ intToString(x) ^^ 
-                #      ":" ^^ intToString(y));
-                proc ! Latest(t);
-                updating(proc, (t, Start)::[])
-            #case Lookup(_, _) ->
-            case _ -> waiting([])
-       }
+fun draw(mgr, scene, tEnd) client {
+    receive {
+        case B((t, EDraw)::evts) -> 
+            if (t < tEnd) {
+                var svgXml = (scene : ((Float)~?~>Xml) <- Beh(Xml))
+                                (intToFloat(t));
+                var name = getAttribute(svgXml, "id");
+                replaceNode(svgXml, getNodeById(name)); 
+                mgr ! MDraw(self());
+                draw(mgr, scene, tEnd)
+            } else {
+            }
+        case _ ->
+    }
 }
 
 var scene = compose();
 
-fun container() client {
-    var mouseMgr = spawn { waiting([]) };
+fun container() {
+    var mouseMgr = spawn { evtMgr([]) };
     <#>
     <button id="press1" type="button" 
     l:onclick="{
-                   var t = clientTime(); 
-                   var proc = spawn { 
-                       drawing(mouseMgr, scene, t, t + 10000)};
-                   mouseMgr ! Update(t, proc);
+                   ignore(spawn { drawInit(mouseMgr, scene, 10000,
+                                      [(clientTime(), EDraw)]) })
                }">draw image1</button>
 
     <div id="svgbasics" >
     </div>
     <div id="touchpad"
-    l:onmousemove="{mouseMgr ! MouseMove(clientTime(), (getPageX(event),
-                                   getPageY(event)))}"
-    l:onclick="{mouseMgr ! MouseClick(clientTime(), (getPageX(event),
-                                   getPageY(event)))}" >
-    </div>
+    l:onmousemove="{mouseMgr ! MMove(clientTime(),
+                                 EMove((getPageX(event), getPageY(event))))}"
+    l:onclick="{mouseMgr ! MClick(clientTime(),
+                             EClick((getPageX(event), getPageY(event))))}" 
+    ></div>
     </#>
 }
+
+# =====================================================
+
+
+
 
 page
 <html>
