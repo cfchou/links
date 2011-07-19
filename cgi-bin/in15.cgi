@@ -150,7 +150,7 @@ var waggleA = cos;
 var pWiggleA = const(1.0) `fAddB` wiggleA;
 var pWaggleA = const(1.0) `fAddB` waggleA;
 
-fun compose() {
+fun compose(mouseE) {
     #-- image1
     var w = (const(60.0) `fMulB` pWiggleA);
     var h = (const(45.0) `fMulB` pWiggleA);
@@ -196,55 +196,60 @@ fun pressed(s) client {
 
 fun evtMgr(evts) client {
     receive {
-        case MDraw(proc) -> 
-            var new = (clientTime(), EDraw);
-            proc ! B(new::evts);
-            evtMgr([])
+        case MQuery((t, proc)) -> 
+            #var new = (clientTime(), EDraw);
+            var lst = dropWhile((fun ((t2, _)) { t2 > t }), evts);
+            proc ! B(lst);
+            #evtMgr([])
+            evtMgr(evts)
         case MMove(new) ->
+            
             evtMgr(new::evts)
         case MClick(new) ->
+            error("mclick");
             evtMgr(new::evts)
         case _ ->
     }
 }
 
-fun drawInit(mgr, scene, dura, (t, EDraw)::evts) client {
+
+fun mouse(mgr) (t) {
+    spawnWait { mgr ! MQuery(t, self());
+                recv ()  }
+}
+fun drawInit(scene, dura) client {
     if (not (pressed("drawImage"))) {
-        var svgXml = (scene : ((Float)~?~>Xml) <- Beh(Xml))(intToFloat(t));
+        var now = clientTime();
+        var svgXml = (scene : ((Float)~?~>Xml) <- Beh(Xml))(intToFloat(now));
         appendChildren(svgXml, getNodeById("svgbasics"));
 
-        mgr ! MDraw(self());
-        draw(mgr, scene, t + dura)
+        draw(scene, now + dura)
     } else {
         removeNode(getNodeById("svg1"));
     }
 }
 
-fun draw(mgr, scene, tEnd) client {
-    receive {
-        case B((t, EDraw)::evts) -> 
-            if (t < tEnd) {
-                var svgXml = (scene : ((Float)~?~>Xml) <- Beh(Xml))
-                                (intToFloat(t));
-                var name = getAttribute(svgXml, "id");
-                replaceNode(svgXml, getNodeById(name)); 
-                mgr ! MDraw(self());
-                draw(mgr, scene, tEnd)
-            } else {
-            }
-        case _ ->
-    }
+fun draw(scene, tEnd) client {
+    var now = clientTime();
+    if (now <= tEnd) {
+        var svgXml = (scene : ((Float)~?~>Xml) <- Beh(Xml))
+                        (intToFloat(now));
+        var name = getAttribute(svgXml, "id");
+        replaceNode(svgXml, getNodeById(name)); 
+        draw(scene, tEnd)
+    } else { }
 }
 
-var scene = compose();
+#var scene = compose();
 
 fun container() {
     var mouseMgr = spawn { evtMgr([]) };
+    var mouseE = mouse(mouseMgr);
+    var scene = compose(mouseE);
     <#>
     <button id="press1" type="button" 
     l:onclick="{
-                   ignore(spawn { drawInit(mouseMgr, scene, 10000,
-                                      [(clientTime(), EDraw)]) })
+                   ignore(spawn { drawInit(scene, 10000) })
                }">draw image1</button>
 
     <div id="svgbasics" >
@@ -259,9 +264,6 @@ fun container() {
 }
 
 # =====================================================
-
-
-
 
 page
 <html>

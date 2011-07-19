@@ -24,27 +24,40 @@ fun iAddB(iB, jB) { fun (t:Float) { iB(t) + jB(t) } }
 fun iSubB(iB, jB) { fun (t:Float) { iB(t) - jB(t) } }
 fun iMulB(iB, jB) { fun (t:Float) { iB(t) * jB(t) } }
 fun iDivB(iB, jB) { fun (t:Float) { iB(t) / jB(t) } }
+fun iModB(iB, jB) { fun (t:Float) { mod(iB(t), jB(t)) } }
 
 fun fAddB(iB, jB) { fun (t:Float) { iB(t) +. jB(t) } }
 fun fSubB(iB, jB) { fun (t:Float) { iB(t) -. jB(t) } }
 fun fMulB(iB, jB) { fun (t:Float) { iB(t) *. jB(t) } }
 fun fDivB(iB, jB) { fun (t:Float) { iB(t) /. jB(t) } }
 
+fun fModB(iB, jB) {
+    fun (t:Float) {
+        var jbt = jB(t);
+        var d = iB(t) /. jbt;
+        (d -. floor(d)) *. jbt
+    }
+}
+
+
+
+
 fun itofB(iB) { fun (t:Float) { intToFloat(iB(t)) } }
 
 fun ftoiB(iB) { fun (t:Float) { floatToInt(iB(t)) } }
 
-var time = fun (t:Float) { t };
+sig time : () -> Beh(Float)
+fun time() { fun (t:Float) { t } }
 
 fun fasterB(fB, xB) {
     fun (t:Float) {
-        xB((time `fMulB` fB)(t))
+        xB((time() `fMulB` fB)(t))
     } 
 }
 
 fun slowerB(fB, xB) { 
     fun (t:Float) {
-        xB((time `fDivB` fB)(t))
+        xB((time() `fDivB` fB)(t))
     } 
 }
 
@@ -80,7 +93,7 @@ fun stretch(elmB, wB, hB) {
     }
 }
 
-fun pointToCoord(xB, yB) {
+fun toCoord(xB, yB) {
     fun (t:Float) {
         (xB(t), yB(t))
     }
@@ -114,6 +127,14 @@ fun withColor(elmB, colorB) {
     fun (attr:(color:Beh(String) |_)) {
         fun (t:Float) {
             elmB((attr with color = colorB))(t)
+        }
+    }
+}
+
+fun withStroke(elmB, colorB) {
+    fun (attr:(stroke:Beh(String) |_)) {
+        fun (t:Float) {
+            elmB((attr with stroke = colorB))(t)
         }
     }
 }
@@ -222,14 +243,17 @@ fun svg(id, elmB, wB, hB) {
 }
 
 # [COMPOSE] ==========================================
+
+# [-1, 1] [1, -1]
 var wiggleA = sin;
 var waggleA = cos;
 
+# [0, 2] [2, 0]
 var pWiggleA = const(1.0) `fAddB` wiggleA;
 var pWaggleA = const(1.0) `fAddB` waggleA;
 
 fun compose() {
-    #-- image1
+    #-- luigi shrink & grow
     var w = (const(80.0) `fMulB` pWiggleA) `fAddB` const(80.0);
     var h = (const(60.0) `fMulB` pWiggleA) `fAddB` const(60.0);
     var luigi = const("photos_files/Paperluigi.png");
@@ -239,14 +263,14 @@ fun compose() {
                 slowerB(const(300.0), w),
                 slowerB(const(300.0), h));
 
-    #-- image2 revolve
-    var x = (const(200.0) `fMulB` pWiggleA) `fAddB` const(50.0);
-    var y = (const(200.0) `fMulB` pWaggleA) `fAddB` const(50.0);
+    #-- mario revolve
+    var x = slowerB(const(500.0), 
+                    (const(200.0) `fMulB` pWiggleA) `fAddB` const(50.0));
+    var y = slowerB(const(500.0),
+                    (const(200.0) `fMulB` pWaggleA) `fAddB` const(50.0));
     var mario = const("photos_files/super_mario_theme.png");
 
-    var m2 = stretch(move(image("m2"),
-                            slowerB(const(1500.0), x),
-                            slowerB(const(500.0), y)),
+    var m2 = stretch(move(image("m2"), x, y),
                 const(100.0), const(100.0)) `withImg` mario;
     
     #-- circle
@@ -255,13 +279,26 @@ fun compose() {
     var d1 = move(ellipse("d1"), const(100.0), const(100.0)); 
     var d2 = stretch(d1, chubby2, chubby2) `withColor` const("red");
 
+    #-- point at the center of mario
+    var px = x `fAddB` const(50.0);
+    var py = y `fAddB` const(50.0);
+    var p1 = stretch(move(ellipse("p1") `withStroke` const("yellow"),
+                          px, py),
+                     const(3.0), const(3.0)); 
+
     #-- rectangle
-    var r1 = stretch(move(rect("r1"), const(100.0), const(100.0)),
-                    chubby2, chubby2);
-    var r2 = rotateAbout(r1, const(45.0), const((100.0, 100.0)));
+    var r1 = stretch(move(rect("r1"), 
+                          px `fAddB` const(50.0), py), 
+                     const(20.0), const(20.0));
+    #var r1 = stretch(move(rect("r1"), x, y), 
+
+    var r2 = rotateAbout(r1,
+                         slowerB(const(5.0), time() `fModB` const(360.0)),
+                         #const((100.0, 300.0)));
+                         toCoord(px, py));
 
     svg("svg1",
-        d2 `over` r2 `over` m1 `over` m2,
+        p1 `over` d2 `over` r2 `over` m1 `over` m2,
         const(800.0), const(600.0))
 }
 
