@@ -3,6 +3,8 @@
 #??
 #typename Attr = [| AInt:(Int) -> Int | AString:(Int) -> String |];
 typename Beh(a) = (Float){}~>a;
+typename Coord = (Float, Float);
+typename Points = [Coord];
 
 # [API] =====================================
 fun newId () {
@@ -38,9 +40,6 @@ fun fModB(iB, jB) {
         (d -. floor(d)) *. jbt
     }
 }
-
-
-
 
 fun itofB(iB) { fun (t:Float) { intToFloat(iB(t)) } }
 
@@ -123,10 +122,26 @@ fun withImg(elmB, pathB) {
     }
 }
 
-fun withColor(elmB, colorB) {
-    fun (attr:(color:Beh(String) |_)) {
+fun withText(elmB, textB) {
+    fun (attr:(text:Beh(String) |_)) {
         fun (t:Float) {
-            elmB((attr with color = colorB))(t)
+            elmB((attr with text = textB))(t)
+        }
+    }
+}
+
+fun withPoints(elmB, ptsB) {
+    fun (attr:(points:Beh(Points) |_)) {
+        fun (t:Float) {
+            elmB((attr with points = ptsB))(t)
+        }
+    }
+}
+
+fun withColor(elmB, colorB) {
+    fun (attr:(fill:Beh(String) |_)) {
+        fun (t:Float) {
+            elmB((attr with fill = colorB))(t)
         }
     }
 }
@@ -139,9 +154,65 @@ fun withStroke(elmB, colorB) {
     }
 }
 
+fun polyline() {
+    fun (attr:(points:Beh(Points), 
+               fill:Beh(String),
+               stroke:Beh(String), strokeWidth:Beh(Float),
+               roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) {
+        fun (t:Float) {
+            var f = fun (str:String, (x:Float, y:Float)) {
+                        str ^^ intToString(floatToInt(x)) ^^ "," ^^ 
+                            intToString(floatToInt(y)) ^^ " "
+                    };
+            var str = fold_left(f, "", attr.points(t));
+
+            var s = floatToInt(attr.strokeWidth(t));
+
+            var a = intToString(floatToInt(attr.roAngle(t)));
+            var (i, j) = attr.roAbout(t);
+            var ri = intToString(floatToInt(i));
+            var rj = intToString(floatToInt(j));
+
+            <polyline
+            transform="rotate({a}, {ri}, {rj})"
+            points="{str}" 
+            style="fill:{attr.fill(t)};stroke:{attr.stroke(t)};
+                   stroke-width:{intToString(s)}" />
+        }
+    }
+}
+
+fun polygon() {
+    fun (attr:(points:Beh(Points), 
+               fill:Beh(String),
+               stroke:Beh(String), strokeWidth:Beh(Float),
+               roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) {
+        fun (t:Float) {
+            var f = fun (str:String, (x:Float, y:Float)) {
+                        str ^^ intToString(floatToInt(x)) ^^ "," ^^ 
+                            intToString(floatToInt(y)) ^^ " "
+                    };
+            var str = fold_left(f, "", attr.points(t));
+
+            var s = floatToInt(attr.strokeWidth(t));
+
+            var a = intToString(floatToInt(attr.roAngle(t)));
+            var (i, j) = attr.roAbout(t);
+            var ri = intToString(floatToInt(i));
+            var rj = intToString(floatToInt(j));
+
+            <polygon
+            transform="rotate({a}, {ri}, {rj})"
+            points="{str}" 
+            style="fill:{attr.fill(t)};stroke:{attr.stroke(t)};
+                   stroke-width:{intToString(s)}" />
+        }
+    }
+}
+
 fun rect(id) {
     fun (attr:(posX:Beh(Float), posY:Beh(Float), width:Beh(Float), 
-               height:Beh(Float), color:Beh(String),
+               height:Beh(Float), fill:Beh(String),
                stroke:Beh(String), strokeWidth:Beh(Float),
                roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) {
         fun (t:Float) {
@@ -162,7 +233,7 @@ fun rect(id) {
             y="{y}"
             width="{intToString(w)}"
             height="{intToString(h)}"
-            style="fill:{attr.color(t)};stroke:{attr.stroke(t)};
+            style="fill:{attr.fill(t)};stroke:{attr.stroke(t)};
                    stroke-width:{intToString(s)}" />
         }
     }
@@ -170,7 +241,7 @@ fun rect(id) {
 
 fun ellipse(id) {
     fun (attr:(posX:Beh(Float), posY:Beh(Float), width:Beh(Float), 
-               height:Beh(Float), color:Beh(String),
+               height:Beh(Float), fill:Beh(String),
                stroke:Beh(String), strokeWidth:Beh(Float),
                roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) {
         fun (t:Float) {
@@ -191,11 +262,47 @@ fun ellipse(id) {
             cy="{intToString(y)}"
             rx="{intToString(w)}"
             ry="{intToString(h)}"
-            style="fill:{attr.color(t)};stroke:{attr.stroke(t)};
+            style="fill:{attr.fill(t)};stroke:{attr.stroke(t)};
                    stroke-width:{intToString(s)}" />
         }
     }
 }
+
+fun text() {
+    fun (attr:(posX:Beh(Float), posY:Beh(Float),
+               fill:Beh(String),
+               stroke:Beh(String), strokeWidth:Beh(Float),
+               roAngle:Beh(Float), roAbout:Beh((Float, Float)),
+               text:Beh(String),
+               ffamily:Beh(String), fsize:Beh(Float),
+               fweight:Beh(String) |_)) {
+        fun (t:Float) {
+            var x = floatToInt(attr.posX(t));
+            var y = floatToInt(attr.posY(t));
+
+            var s = floatToInt(attr.strokeWidth(t));
+
+            var a = intToString(floatToInt(attr.roAngle(t)));
+            var (i, j) = attr.roAbout(t);
+            var ri = intToString(floatToInt(i));
+            var rj = intToString(floatToInt(j));
+
+            var fsz = floatToInt(attr.fsize(t));
+
+            <text
+            transform="rotate({a}, {ri}, {rj})"
+            x="{intToString(x)}" 
+            y="{intToString(y)}"
+            style="fill:{attr.fill(t)};stroke:{attr.stroke(t)};
+                   stroke-width:{intToString(s)};
+                   font-family:{attr.ffamily(t)};font-size:{intToString(fsz)};
+                   fweight:{attr.fweight(t)}">
+            {stringToXml(attr.text(t))}
+            </text>
+        }
+    }
+}
+
 
 fun image(id) {
     fun (attr:(posX:Beh(Float), posY:Beh(Float), width:Beh(Float), 
@@ -233,10 +340,15 @@ fun svg(id, elmB, wB, hB) {
         viewbox="0 0 {sw} {sh}" >
         <#>
         {elmB((posX = const(0.0), posY = const(0.0), width = const(1.0),
-               height = const(1.0), color = const("white"), 
-               stroke = const("black"), strokeWidth = const(5.0),
+               height = const(1.0), fill = const("none"), 
+               stroke = const("black"), strokeWidth = const(1.0),
                hrefImg = const(""),
-               roAngle = const(0.0), roAbout = const((0.0, 0.0))))(t)}
+               points = const([]),
+               roAngle = const(0.0), roAbout = const((0.0, 0.0)),
+               text = const(""),
+               ffamily = const("Arial"), fsize = const(20.0),
+               fweight = const("normal")
+               ))(t)}
         </#>
         </svg>
     }
@@ -297,8 +409,16 @@ fun compose() {
                          #const((100.0, 300.0)));
                          toCoord(px, py));
 
+    #-- text
+    var t1 = move(text() `withText` const("HELLLO"), const(400.0),
+                const(400.0));
+    #-- polyline
+    var pts = const([(10.0, 10.0), (10.0, 50.0), (50.0, 50.0), (50.0, 100.0)]);
+    var pl = polyline() `withPoints` pts;
+    var pg = polygon() `withPoints` pts;
+    
     svg("svg1",
-        p1 `over` d2 `over` r2 `over` m1 `over` m2,
+        pg `over` t1 `over` p1 `over` d2 `over` r2 `over` m1 `over` m2,
         const(800.0), const(600.0))
 }
 
