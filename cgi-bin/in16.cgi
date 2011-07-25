@@ -2,9 +2,24 @@
 
 #??
 #typename Attr = [| AInt:(Int) -> Int | AString:(Int) -> String |];
-typename Beh(a) = (Float){}~>a;
-typename Coord = (Float, Float);
-typename Points = [Coord];
+typename Time = Float;
+typename Beh(a) = (Time){}~>a;
+
+typename FPair = (Float, Float);
+typename Points = [FPair];
+
+typename Attrs = (posX:Beh(Float), posY:Beh(Float),
+                  height:Beh(Float), width:Beh(Float),
+                  fill:Beh(String), hrefImg:Beh (String),
+                  stroke:Beh(String), strokeWidth:Beh(Float),
+                  roAbout:Beh((Float, Float)), roAngle:Beh(Float),
+                  points:Beh(Points),
+                  text:Beh(String),
+                  ffamily:Beh(String), fsize:Beh(Float),
+                  fweight:Beh(String));
+
+#typename Shape = (Attrs){}~> (Float){}~> Xml;
+typename SBeh = (Attrs){}~> Beh(Xml);
 
 # [API] =====================================
 fun newId () {
@@ -19,16 +34,35 @@ fun newId () {
     }
 }
 
+fun fst((a, _)) { a }
+fun snd((_, b)) { b }
+
+sig fstB : (Beh((a, a))) -> Beh(a)
+fun fstB(cB) { fun (t:Float) { fst(cB(t)) } }
+
+sig sndB : (Beh((a, a))) -> Beh(a)
+fun sndB(cB) { fun (t:Float) { snd(cB(t)) } }
+
+sig toPairB : (Beh(a), Beh(a)) -> Beh((a, a))
+fun toPairB(xB, yB) { fun (t:Float) { (xB(t), yB(t)) } }
+
+sig toBPair : (Beh((a, a))) -> (Beh(a), Beh(a))
+fun toBPair(xB) { (fstB(xB), sndB(xB)) } 
+
 sig const : (a) -> Beh(a)
 fun const(v) { fun (t:Float) { v } }
 
+sig iAddB : (Beh(Int), Beh(Int)) -> Beh(Int)
 fun iAddB(iB, jB) { fun (t:Float) { iB(t) + jB(t) } }
+
 fun iSubB(iB, jB) { fun (t:Float) { iB(t) - jB(t) } }
 fun iMulB(iB, jB) { fun (t:Float) { iB(t) * jB(t) } }
 fun iDivB(iB, jB) { fun (t:Float) { iB(t) / jB(t) } }
 fun iModB(iB, jB) { fun (t:Float) { mod(iB(t), jB(t)) } }
 
+sig fAddB : (Beh(Float), Beh(Float)) -> Beh(Float)
 fun fAddB(iB, jB) { fun (t:Float) { iB(t) +. jB(t) } }
+
 fun fSubB(iB, jB) { fun (t:Float) { iB(t) -. jB(t) } }
 fun fMulB(iB, jB) { fun (t:Float) { iB(t) *. jB(t) } }
 fun fDivB(iB, jB) { fun (t:Float) { iB(t) /. jB(t) } }
@@ -48,20 +82,42 @@ fun ftoiB(iB) { fun (t:Float) { floatToInt(iB(t)) } }
 sig time : () -> Beh(Float)
 fun time() { fun (t:Float) { t } }
 
-fun fasterB(fB, xB) {
-    fun (t:Float) {
-        xB((time() `fMulB` fB)(t))
-    } 
-}
-
-fun slowerB(fB, xB) { 
+#sig slowerB : (Beh(Float), Beh(Float)) -> Beh(Float)
+sig slowerB : (Beh(a), Beh(Float)) -> Beh(a)
+fun slowerB(xB, fB) { 
     fun (t:Float) {
         xB((time() `fDivB` fB)(t))
     } 
 }
 
+sig fasterB : (Beh(a), Beh(Float)) -> Beh(a)
+fun fasterB(xB, fB) {
+    fun (t:Float) {
+        xB((time() `fMulB` fB)(t))
+    } 
+}
+
+sig shapeSlowerB : (SBeh, Beh(Float)) -> SBeh
+fun shapeSlowerB(xB, fB) { 
+    fun (attr:Attrs) {
+        fun (t:Float) {
+            xB(attr)((time() `fDivB` fB)(t))
+        } 
+    }
+}
+
+sig shapeFasterB : (SBeh, Beh(Float)) -> SBeh
+fun shapeFasterB(xB, fB) { 
+    fun (attr:Attrs) {
+        fun (t:Float) {
+            xB(attr)((time() `fDivB` fB)(t))
+        } 
+    }
+}
+
+sig over : (SBeh, SBeh) -> SBeh
 fun over(elm1B, elm2B) {
-    fun (attr) {
+    fun (attr:Attrs) {
         fun (t:Float) {
             <#>
             {elm2B(attr)(t)}
@@ -71,8 +127,11 @@ fun over(elm1B, elm2B) {
     }
 }
 
+#sig move : ((Attrs) -a-> (Float) -a-> b, Beh(Float), Beh(Float)) 
+#           -> (Attrs) -> (Float) -a-> b
+sig move : (SBeh, Beh(Float), Beh(Float)) -> SBeh
 fun move(elmB, xB, yB) {
-    fun (attr:(posX:Beh(Float), posY:Beh(Float) |_)) {
+    fun (attr:Attrs) {
         fun (t:Float) {
             var new = (attr with posX = attr.posX `fAddB` xB,
                                  posY = attr.posY `fAddB` yB);
@@ -82,8 +141,21 @@ fun move(elmB, xB, yB) {
     }
 }
 
+
+sig moveA : (SBeh, Beh(FPair)) -> SBeh
+fun moveA(elmB, cB:Beh(FPair)) {
+    fun (attr:Attrs) {
+        fun (t:Float) {
+            var new = (attr with posX = attr.posX `fAddB` fstB(cB),
+                                 posY = attr.posY `fAddB` sndB(cB));
+            elmB(new)(t)
+        }
+    }
+}
+
 fun stretch(elmB, wB, hB) {
-    fun (attr:(width:Beh(Float), height:Beh(Float) |_)) {
+    #fun (attr:(width:Beh(Float), height:Beh(Float) |_)) 
+    fun (attr:Attrs) {
         fun (t:Float) {
             var new = (attr with width = attr.width `fAddB` wB,
                                  height = attr.height `fAddB` hB);
@@ -92,14 +164,19 @@ fun stretch(elmB, wB, hB) {
     }
 }
 
-fun toCoord(xB, yB) {
-    fun (t:Float) {
-        (xB(t), yB(t))
+sig stretchA : (SBeh, Beh(FPair)) -> SBeh
+fun stretchA(elmB, cB) {
+    fun (attr:Attrs) {
+        fun (t:Float) {
+            var new = (attr with width = attr.width `fAddB` fstB(cB),
+                                 height = attr.height `fAddB` sndB(cB));
+            elmB(new)(t)
+        } 
     }
 }
 
 fun rotateAbout(elmB, aB, coordB) {
-    fun (attr) {
+    fun (attr:Attrs) {
         fun (t:Float) {
             elmB((attr with roAngle = aB, roAbout = coordB))(t)
         } 
@@ -107,58 +184,66 @@ fun rotateAbout(elmB, aB, coordB) {
 }
 
 fun rotate(elmB, aB) {
-    fun (attr) {
+    fun (attr:Attrs) {
         fun (t:Float) {
             elmB((attr with roAngle = aB))(t)
         } 
     }
 }
 
+sig withImg : (SBeh, Beh(String)) -> SBeh
 fun withImg(elmB, pathB) {
-    fun (attr:(hrefImg:Beh(String) |_)) {
+    fun (attr:Attrs) {
         fun (t:Float) {
             elmB((attr with hrefImg = pathB))(t)
         }
     }
 }
 
+sig withText : (SBeh, Beh(String)) -> SBeh
 fun withText(elmB, textB) {
-    fun (attr:(text:Beh(String) |_)) {
+    fun (attr:Attrs) {
         fun (t:Float) {
             elmB((attr with text = textB))(t)
         }
     }
 }
 
+sig withPoints : (SBeh, Beh(Points)) -> SBeh
 fun withPoints(elmB, ptsB) {
-    fun (attr:(points:Beh(Points) |_)) {
+    fun (attr:Attrs) {
         fun (t:Float) {
             elmB((attr with points = ptsB))(t)
         }
     }
 }
 
+sig withColor : (SBeh, Beh(String)) -> SBeh
 fun withColor(elmB, colorB) {
-    fun (attr:(fill:Beh(String) |_)) {
+    fun (attr:Attrs) {
         fun (t:Float) {
             elmB((attr with fill = colorB))(t)
         }
     }
 }
 
+sig withStroke : (SBeh, Beh(String)) -> SBeh
 fun withStroke(elmB, colorB) {
-    fun (attr:(stroke:Beh(String) |_)) {
+    fun (attr:Attrs) {
         fun (t:Float) {
             elmB((attr with stroke = colorB))(t)
         }
     }
 }
 
+#sig polyline : () -> (Attrs) -> (Float) ~> Xml
+sig polyline : () -> SBeh
 fun polyline() {
-    fun (attr:(points:Beh(Points), 
-               fill:Beh(String),
-               stroke:Beh(String), strokeWidth:Beh(Float),
-               roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) {
+    #fun (attr:(points:Beh(Points), 
+    #           fill:Beh(String),
+    #           stroke:Beh(String), strokeWidth:Beh(Float),
+    #           roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) 
+    fun (attr:Attrs) {
         fun (t:Float) {
             var f = fun (str:String, (x:Float, y:Float)) {
                         str ^^ intToString(floatToInt(x)) ^^ "," ^^ 
@@ -182,11 +267,13 @@ fun polyline() {
     }
 }
 
+sig polygon : () -> SBeh
 fun polygon() {
-    fun (attr:(points:Beh(Points), 
-               fill:Beh(String),
-               stroke:Beh(String), strokeWidth:Beh(Float),
-               roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) {
+    #fun (attr:(points:Beh(Points), 
+    #           fill:Beh(String),
+    #           stroke:Beh(String), strokeWidth:Beh(Float),
+    #           roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) 
+    fun (attr:Attrs) {
         fun (t:Float) {
             var f = fun (str:String, (x:Float, y:Float)) {
                         str ^^ intToString(floatToInt(x)) ^^ "," ^^ 
@@ -210,11 +297,13 @@ fun polygon() {
     }
 }
 
-fun rect(id) {
-    fun (attr:(posX:Beh(Float), posY:Beh(Float), width:Beh(Float), 
-               height:Beh(Float), fill:Beh(String),
-               stroke:Beh(String), strokeWidth:Beh(Float),
-               roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) {
+sig rect : () -> SBeh
+fun rect() {
+    #fun (attr:(posX:Beh(Float), posY:Beh(Float), width:Beh(Float), 
+    #           height:Beh(Float), fill:Beh(String),
+    #           stroke:Beh(String), strokeWidth:Beh(Float),
+    #           roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) 
+    fun (attr:Attrs) {
         fun (t:Float) {
             var x = intToString(floatToInt(attr.posX(t)));
             var y = intToString(floatToInt(attr.posY(t)));
@@ -227,7 +316,7 @@ fun rect(id) {
             var ri = intToString(floatToInt(i));
             var rj = intToString(floatToInt(j));
 
-            <rect id="{id}"  
+            <rect 
             transform="rotate({a}, {ri}, {rj})"
             x="{x}" 
             y="{y}"
@@ -239,11 +328,13 @@ fun rect(id) {
     }
 }
 
-fun ellipse(id) {
-    fun (attr:(posX:Beh(Float), posY:Beh(Float), width:Beh(Float), 
-               height:Beh(Float), fill:Beh(String),
-               stroke:Beh(String), strokeWidth:Beh(Float),
-               roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) {
+sig ellipse : () -> SBeh
+fun ellipse() {
+#    fun (attr:(posX:Beh(Float), posY:Beh(Float), width:Beh(Float), 
+#               height:Beh(Float), fill:Beh(String),
+#               stroke:Beh(String), strokeWidth:Beh(Float),
+#               roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) 
+    fun (attr:Attrs) {
         fun (t:Float) {
             var x = floatToInt(attr.posX(t));
             var y = floatToInt(attr.posY(t));
@@ -256,7 +347,7 @@ fun ellipse(id) {
             var ri = intToString(floatToInt(i));
             var rj = intToString(floatToInt(j));
 
-            <ellipse id="{id}"  
+            <ellipse 
             transform="rotate({a}, {ri}, {rj})"
             cx="{intToString(x)}" 
             cy="{intToString(y)}"
@@ -268,14 +359,26 @@ fun ellipse(id) {
     }
 }
 
+
+#sig text : () ->
+#((posX:Beh(Float), posY:Beh(Float),
+#height:Beh(Float), width:Beh(Float),
+#fill:Beh(String), hrefImg:Beh (String),
+#stroke:Beh(String), strokeWidth:Beh(Float),
+#roAbout:Beh((Float, Float)), roAngle:Beh(Float),
+#text:Beh(String),
+#ffamily:Beh(String), fsize:Beh(Float),
+#fweight:Beh(String) |_)) -> (Float) {}~> Xml
+sig text : () -> SBeh
 fun text() {
-    fun (attr:(posX:Beh(Float), posY:Beh(Float),
-               fill:Beh(String),
-               stroke:Beh(String), strokeWidth:Beh(Float),
-               roAngle:Beh(Float), roAbout:Beh((Float, Float)),
-               text:Beh(String),
-               ffamily:Beh(String), fsize:Beh(Float),
-               fweight:Beh(String) |_)) {
+#    fun (attr:(posX:Beh(Float), posY:Beh(Float),
+#               fill:Beh(String),
+#               stroke:Beh(String), strokeWidth:Beh(Float),
+#               roAngle:Beh(Float), roAbout:Beh((Float, Float)),
+#               text:Beh(String),
+#               ffamily:Beh(String), fsize:Beh(Float),
+#               fweight:Beh(String) |_)) 
+    fun (attr:Attrs) {
         fun (t:Float) {
             var x = floatToInt(attr.posX(t));
             var y = floatToInt(attr.posY(t));
@@ -304,10 +407,12 @@ fun text() {
 }
 
 
-fun image(id) {
-    fun (attr:(posX:Beh(Float), posY:Beh(Float), width:Beh(Float), 
-               height:Beh(Float), hrefImg:Beh(String),
-               roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) {
+sig image : () -> SBeh
+fun image() {
+#    fun (attr:(posX:Beh(Float), posY:Beh(Float), width:Beh(Float), 
+#               height:Beh(Float), hrefImg:Beh(String),
+#               roAngle:Beh(Float), roAbout:Beh((Float, Float)) |_)) 
+    fun (attr:Attrs) {
         fun (t:Float) {
             var x = floatToInt(attr.posX(t));
             var y = floatToInt(attr.posY(t));
@@ -319,7 +424,7 @@ fun image(id) {
             var ri = intToString(floatToInt(i));
             var rj = intToString(floatToInt(j));
 
-            <image id="{id}" 
+            <image 
             transform="rotate({a}, {ri}, {rj})"
             x="{intToString(x)}" 
             y="{intToString(y)}" 
@@ -364,53 +469,78 @@ var waggleA = cos;
 var pWiggleA = const(1.0) `fAddB` wiggleA;
 var pWaggleA = const(1.0) `fAddB` waggleA;
 
+
+# [FIXME]
+fun clocktime() {
+    fun (t:Float) {
+        var k = intToDate(floatToInt(t));
+        #var k = intToDate(serverTime());
+        intToString(k.hours) ^^ ":" ^^ intToString(k.minutes) ^^ ":" ^^ 
+        intToString(k.seconds) 
+    }
+}
+
+sig test0 : () -> (String) -> (Float){}->Float
+fun test0() {
+    fun (a:String) {
+        fun (b:Float) {
+            b
+        }
+    }
+}
+    #var test00 = test0()("hello");
+
 fun compose() {
     #-- luigi shrink & grow
     var w = (const(80.0) `fMulB` pWiggleA) `fAddB` const(80.0);
     var h = (const(60.0) `fMulB` pWiggleA) `fAddB` const(60.0);
     var luigi = const("photos_files/Paperluigi.png");
 
-    var m1 = stretch(move(image("m1") `withImg` luigi,
-                            const(400.0), const(100.0)),
-                slowerB(const(300.0), w),
-                slowerB(const(300.0), h));
+    #var m1 = stretch(move(image() `withImg` luigi,
+    #                        const(400.0), const(100.0)),
+    #                 w, h) `shapeSlowerB` const(300.0);
+    var m1 = stretch((image() `withImg` luigi) `moveA`
+                            toPairB(const(400.0), const(100.0)),
+                     w, h) `shapeSlowerB` const(300.0);
 
     #-- mario revolve
-    var x = slowerB(const(500.0), 
-                    (const(200.0) `fMulB` pWiggleA) `fAddB` const(50.0));
-    var y = slowerB(const(500.0),
-                    (const(200.0) `fMulB` pWaggleA) `fAddB` const(50.0));
+    var x = slowerB((const(200.0) `fMulB` pWiggleA) `fAddB` const(50.0),
+                    const(500.0));
+    var y = slowerB((const(200.0) `fMulB` pWaggleA) `fAddB` const(50.0),
+                    const(500.0));
     var mario = const("photos_files/super_mario_theme.png");
 
-    var m2 = stretch(move(image("m2"), x, y),
+    var m2 = stretch(move(image(), x, y),
                 const(100.0), const(100.0)) `withImg` mario;
     
     #-- circle
     var chubby = (const(60.0) `fMulB` wiggleA) `fAddB` const(40.0);
-    var chubby2 = slowerB(const(500.0), chubby);
-    var d1 = move(ellipse("d1"), const(100.0), const(100.0)); 
+    var chubby2 = chubby `slowerB` const(500.0);
+    var d1 = move(ellipse(), const(100.0), const(100.0)); 
     var d2 = stretch(d1, chubby2, chubby2) `withColor` const("red");
 
     #-- point at the center of mario
     var px = x `fAddB` const(50.0);
     var py = y `fAddB` const(50.0);
-    var p1 = stretch(move(ellipse("p1") `withStroke` const("yellow"),
+    var p1 = stretch(move(ellipse() `withStroke` const("yellow"),
                           px, py),
                      const(3.0), const(3.0)); 
 
     #-- rectangle
-    var r1 = stretch(move(rect("r1"), 
+    var r1 = stretch(move(rect(), 
                           px `fAddB` const(50.0), py), 
                      const(20.0), const(20.0));
     #var r1 = stretch(move(rect("r1"), x, y), 
 
     var r2 = rotateAbout(r1,
-                         slowerB(const(5.0), time() `fModB` const(360.0)),
+                         slowerB(time() `fModB` const(360.0),
+                            const(5.0)), 
                          #const((100.0, 300.0)));
-                         toCoord(px, py));
+                         toPairB(px, py));
+                         #toPairB((px, py)));
 
     #-- text
-    var t1 = move(text() `withText` const("HELLLO"), const(400.0),
+    var t1 = move(text() `withText` clocktime(), const(400.0),
                 const(400.0));
     #-- polyline
     var pts = const([(10.0, 10.0), (10.0, 50.0), (50.0, 50.0), (50.0, 100.0)]);
