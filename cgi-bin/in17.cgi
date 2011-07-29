@@ -7,6 +7,9 @@
 typename Beh(a) = (Float){}~>a;
 #typename Beh(a) = forall e::Row. (Float)~e~>a;
 
+var svg_parent_id = "svg0";
+var svg_child_id = "svg1";
+
 
 # [API] =====================================
 fun newId () {
@@ -23,6 +26,9 @@ fun newId () {
 
 sig const : (a)->Beh(a)
 fun const(v) { fun (t:Float) { v } }
+
+
+
 
 fun iAddB(iB, jB) { fun (t:Float) { iB(t) + jB(t) } }
 fun iSubB(iB, jB) { fun (t:Float) { iB(t) - jB(t) } }
@@ -159,63 +165,11 @@ fun svgA (id, elmB, wB, hB) {
     }
 }
 
-# [EVENT] ==========================================
-typename Event(a) = (Float){}~>[(Float, a)];
+# --------------------------------
+#typename Event(a) = (Float){}~>[(Float, a)];
+typename Event(a) = Beh([(Float, a)]);
 
-sig switcher : (Beh(a), Event(Beh(a))) -> Beh(a)
-fun switcher(b, evt) {
-    fun (t:Float) {
-        var (_, lst) = unzip(takeWhile(fun ((t2, _)) { t2 < t }, evt(t)));
-        var lst2 = b::lst;
-        # either b or last behaviour in the event stream
-        select(lst2, length(lst2) - 1)(t)
-    }
-}
-
-sig stepper : (a, Event(a)) -> Beh(a)
-fun stepper(a, evt) {
-    switcher(const(a), mapE(const, evt))
-}
-
-# mosueE : Event([|EMove:(Float, Float) | EClick:((Float, Float)) |]
-# mouseE : (Float){}~>[(Float, EMove(Float, Float))]
-fun createMouseMoveB(mouseE) {
-    var f = fun (t, a) {
-                switch(a) {
-                    case EMove(_, _) ->
-                        true
-                    case _ -> false
-                }
-            };
-    var f2 = fun (EMove(x, y)) {
-                    (x, y)
-             };
-    (0.0, 0.0) `stepper` (f2 `mapE` (f `filterE` mouseE)) 
-}
-
-fun testE(mouseE) {
-    var get = fun ((t, _)) {
-                  t 
-              };
-    fun (t:Float) {
-        var lst = mouseE(t);
-        var sz = length(lst);
-        if (sz > 3) {
-            var a = get(select(lst, 0));
-            var b = get(select(lst, 0));
-            var c = get(select(lst, 0));
-            debug(floatToString(a) ^^ ":debug"
-                  ^^ floatToString(a) ^^ ":" 
-                  ^^ floatToString(a));
-            (300.0, 100.0)
-        } else {
-            debug("testE--------------------------");
-            (100.0, 100.0)
-        }
-    }
-}
-
-
+# [HANDLERS] ------------------
 # +=>
 sig handleE : (Event(a), (Float, a){}~>b) -> Event(b)
 fun handleE(evt, f) {
@@ -245,15 +199,148 @@ fun constE(evt, b) {
     f `mapE` evt 
 }
 
-#
+
 sig filterE : ((Float, a){}~>Bool, Event(a)) -> Event(a)
 fun filterE(f, evt) {
     fun (t:Float) {
-        var f2 = fun ((t, a)) {
-                     f(t, a)
+        var f2 = fun ((t2, a)) {
+                     f(t2, a)
                  };
         filter(f2, evt(t))
     }
+}
+
+sig latterE : (Float, Event(a)) -> Event(a)
+fun latterE (ms, evt) {
+    fun (t:Float) {
+        var f2 = fun ((t2, _)) {
+                    t2 > t +. ms  
+                 };
+        filter(f2, evt(t))
+    }
+}
+
+sig switcher : (Beh(a), Event(Beh(a))) -> Beh(a)
+fun switcher(b, evt) {
+    fun (t:Float) {
+        var (_, lst) = unzip(takeWhile(fun ((t2, _)) { t2 < t }, evt(t)));
+        var lst2 = b::lst;
+        # either b or last behaviour in the event stream
+        select(lst2, length(lst2) - 1)(t)
+    }
+}
+
+sig stepper : (a, Event(a)) -> Beh(a)
+fun stepper(a, evt) {
+    switcher(const(a), mapE(const, evt))
+}
+
+sig snapshot : (Event(a), Beh(b)) ~> Event((a, b)) 
+fun snapshot(evt, xB) {
+    fun (t:Float) {
+        var f = fun ((t2, a)) {
+                    (t2, (a, xB(t2)))
+                };
+        map(f, evt(t))
+    }
+}
+
+sig snapshot2 : (Event(a), Beh(b)) ~> Event(b) 
+fun snapshot2(evt, xB) {
+    fun (t:Float) {
+        var f = fun ((t2, a)) {
+                    (t2, xB(t2))
+                };
+        map(f, evt(t))
+    }
+}
+
+fun createE(mgr) (t) {
+    spawnWait {
+        mgr ! MQuery(t, self());
+        var lst = recv ();
+        #debug("createE-------" ^^ intToString(length(lst)));
+        fun (t2:Float) {
+            lst
+        }
+    }
+}
+
+fun mouseClickE(user) {
+    var f = fun (t, a) {
+                switch(a) {
+                    case EClick(_, _) ->
+                        true
+                    case _ -> false
+                }
+            };
+    var f2 = fun (a) {
+                switch(a) {
+                    case EMove(x, y) -> (x, y)
+                    case EClick(x, y) -> (x, y)
+                }
+             };
+
+    f2 `mapE` (f `filterE` user)
+}
+# mmE : Event(User) -> Event(FPair)
+fun mouseMoveE(user) {
+    var f = fun (t, a) {
+                switch(a) {
+                    case EMove(_, _) ->
+                        true
+                    case _ -> false
+                }
+            };
+    var f2 = fun (a) {
+                switch(a) {
+                    case EMove(x, y) -> (x, y)
+                    case EClick(x, y) -> (x, y)
+                }
+             };
+
+    f2 `mapE` (f `filterE` user)
+}
+
+#sig mouseMoveB : (FPair) -> Beh(FPair) 
+fun mouseMoveB(mmE) {
+    (0.0, 0.0) `stepper` mmE
+}
+
+# evts : Event([|EMove:(Float, Float) | EClick:((Float, Float)) |]
+# evts : (Float){}~>[(Float, EMove(Float, Float))]
+fun createMouseMoveB(evts) {
+    var f = fun (t, a) {
+                switch(a) {
+                    case EMove(_, _) ->
+                        true
+                    case _ -> false
+                }
+            };
+    var f2 = fun (a) {
+                switch(a) {
+                    case EMove(x, y) -> (x, y)
+                    case EClick(x, y) -> (x, y)
+                }
+             };
+    (0.0, 0.0) `stepper` (f2 `mapE` (f `filterE` evts)) 
+}
+
+fun createMouseClickB(evts) {
+    var f = fun (t, a) {
+                switch(a) {
+                    case EClick(_, _) ->
+                        true
+                    case _ -> false
+                }
+            };
+    var f2 = fun (a) {
+                switch(a) {
+                    case EMove(x, y) -> (x, y)
+                    case EClick(x, y) -> (x, y)
+                }
+             };
+    (0.0, 0.0) `stepper` (f2 `mapE` (f `filterE` evts)) 
 }
 
 
@@ -286,24 +373,21 @@ fun getCoord(cB) {
     }
 }
 
-fun compose(mouseE) {
+fun compose(user) {
+    var mmE = mouseMoveE(user);
+    
     #-- mouse move behaviour
-    var mmB = createMouseMoveB(mouseE);
-    #var coord = getCoord(mmB);
-
-    #var mmB = testE(mouseE);
-    #
+    var mmB = mouseMoveB(mmE);
 
     #-- circle
     #var d1 = moveA(circleA("d1"), fstB(mmB), sndB(mmB)); 
     var d1 = moveB(circleA("d1"), getCoord(mmB)); 
     var d2 = stretchA(d1, const(50.0), const(50.0));
 
-    svgA("svg1",
+    svgA(svg_child_id,
         d2,
         const(800.0), const(600.0))
 }
-
 
 # [WEB] ==========================================
 
@@ -317,77 +401,109 @@ fun pressed(s) client {
     }
 }
 
+fun span(f, lst) {
+    switch(lst) {
+        case [] -> ([], [])
+        case (x::xs) ->
+            if (f(x)) {
+                var (rs, ls) = span(f, xs);
+                (x::rs, ls)
+            } else {
+                ([], lst)
+            }
+    }
+}
+
 fun evtMgr(evts) client {
     receive {
         case MQuery((t, proc)) -> 
-            #debug("MQuery-------t=" ^^ floatToString(t));
-            var lst = takeWhile((fun ((t2, _)) {
-                                    #debug("MQuery-------t2=" ^^ floatToString(t2));
-                                    t2 < t 
-                                 }), evts);
-            proc ! lst;
-            #evtMgr(evts)
-            evtMgr([])
+            var f = fun ((t2, _)) {
+                        t2 < t
+                    };
+            var (xs, ys) = span(f, evts);
+            proc ! xs;
+            #
+            var f2 = fun ((mm, mc), e) {
+                        switch(e) {
+                            case (_, EMove(_, _)) ->
+                                ([e], mc)
+                            case (_, EClick(_, _)) ->
+                                (mm, [e])
+                        }
+                     };
+            var (mm, mc) = fold_left(f2, ([], []), xs);
+            if (length(mm) == 0 || length(mc) == 0) {
+                evtMgr(mm ++ mc ++ ys)
+            } else {
+                var (mt, _) = hd(mm);
+                var (ct, _) = hd(mc);
+                if (mt > ct) {
+                    evtMgr(mc ++ mm ++ ys)
+                } else {
+                    evtMgr(mm ++ mc ++ ys)
+                }
+            }
         case MMove(new) -> # (Float, EMove(Float, Float))
-            var n = length(evts);
-            #debug("mmove:---------------" ^^ intToString(n));
             evtMgr(evts ++ [new])
-        #case MClick(new) ->
-        #    error("mclick");
-        #    evtMgr(evts ++ [new])
-        case _ ->
+        case MClick(new) -> # (Float, EClick(Float, Float))
+            evtMgr(evts ++ [new])
+        #case _ ->
     }
 }
 
-fun createMouseE(mgr) (t) {
-    spawnWait {
-        mgr ! MQuery(t, self());
-        var lst = recv ();
-        #debug("createMouseE-------" ^^ intToString(length(lst)));
-        lst
-    }
-}
-
-fun drawInit(svg, scene, dura) client {
+fun drawInit2(user, scene, dura) client {
     if (not (pressed("drawImage"))) {
         var now = clientTime();
-        var svgXml = (scene : ((Float)~?~>Xml) <- Beh(Xml))(intToFloat(now));
-        appendChildren(svgXml, getNodeById("svg0"));
-        draw(scene, now + dura)
+        var nowf = intToFloat(now);
+        #var svgXml = (scene : ((Float)~?~>Xml) <- Beh(Xml))(user(nowf))(nowf);
+        var svgXml = scene(user(nowf))(nowf);
+
+        if (isNull(getNodeById(svg_child_id))) {
+            appendChildren(svgXml, getNodeById(svg_parent_id));
+        } else {
+            replaceNode(svgXml, getNodeById(svg_child_id)); 
+        };
+
+        draw2(user, scene, now + dura)
     } else {
-        removeNode(getNodeById("svg1"));
+        removeNode(getNodeById(svg_child_id));
     }
 }
 
-fun draw(scene, tEnd) client {
+fun draw2(user, scene, tEnd) client {
     var now = clientTime();
     if (now <= tEnd) {
-        var svgXml = (scene : ((Float)~?~>Xml) <- Beh(Xml))
-                        (intToFloat(now));
-        var name = getAttribute(svgXml, "id");
-        replaceNode(svgXml, getNodeById(name)); 
-        #replaceNode(<g id="gid">{svgXml}</g>, getNodeById("gid")); 
-        draw(scene, tEnd)
+        var nowf = intToFloat(now);
+        #var svgXml = (scene : ((Float)~?~>Xml) <- Beh(Xml))(user(nowf))(nowf);
+        var svgXml = scene(user(nowf))(nowf);
+        replaceNode(svgXml, getNodeById(svg_child_id)); 
+        draw2(user, scene, tEnd)
     } else { }
 }
 
 fun container() {
     var mouseMgr = spawn { evtMgr([]) };
-    var mouseE = createMouseE(mouseMgr);
-    var scene = compose(mouseE);
+    var user = createE(mouseMgr);
+    var scene = compose;
+
     <#>
     <button id="press1" type="button" 
     l:onclick="{
-                   ignore(spawn { drawInit("svg0", scene, 10000) })
+                   #ignore(spawn { drawInit(scene, 10000) })
+                   ignore(spawn { drawInit2(user, scene, 10000) })
                }">draw image1</button>
+
     <div id="svgbasics" >
     <svg xmlns="http://www.w3.org/2000/svg" version="1.1" 
     xmlns:xlink="http://www.w3.org/1999/xlink"
-    id="svg0" width="800" height="600"
+    id="{svg_parent_id}" width="800" height="600"
     viewbox="0 0 800 600" 
+    l:onclick="{mouseMgr ! MClick(intToFloat(clientTime()),
+                                     EClick(intToFloat(getPageX(event)),
+                                            intToFloat(getPageY(event))))}"
     l:onmousemove="{mouseMgr ! MMove(intToFloat(clientTime()),
                                      EMove(intToFloat(getPageX(event)),
-                                            intToFloat(getPageY(event))))}" />
+                                            intToFloat(getPageY(event))))}" /> 
     </div>
     </#>
 }
