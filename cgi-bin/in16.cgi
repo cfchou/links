@@ -13,7 +13,6 @@ typename Attrs = (posX:Beh(Float), posY:Beh(Float),
                   height:Beh(Float), width:Beh(Float),
                   fill:Beh(String), hrefImg:Beh (String),
                   stroke:Beh(String), strokeWidth:Beh(Float),
-                  roAbout:Beh((Float, Float)), roAngle:Beh(Float),
                   transform:[TForm],
                   points:Beh(Points),
                   text:Beh(String),
@@ -253,22 +252,6 @@ fun multiTFormString(fs) {
     fold_left(f, const(""), map(tformString, fs))
 }
 
-fun rotateAbout(elmB, aB, coordB) {
-    fun (attr:Attrs) {
-        fun (t:Float) {
-            elmB((attr with roAngle = aB, roAbout = coordB))(t)
-        } 
-    }
-}
-
-fun rotate(elmB, aB) {
-    fun (attr:Attrs) {
-        fun (t:Float) {
-            elmB((attr with roAngle = aB))(t)
-        } 
-    }
-}
-
 sig withImg : (SBeh, Beh(String)) -> SBeh
 fun withImg(elmB, pathB) {
     fun (attr:Attrs) {
@@ -470,7 +453,6 @@ fun svg(id, elmB, wB, hB) {
                stroke = const("black"), strokeWidth = const(1.0),
                hrefImg = const(""),
                points = const([]),
-               roAngle = const(0.0), roAbout = const((0.0, 0.0)),
                transform = [],
                text = const(""),
                ffamily = const("Arial"), fsize = const(20.0),
