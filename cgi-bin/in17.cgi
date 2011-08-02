@@ -44,6 +44,19 @@ fun itofB(iB) { fun (t:Float) { intToFloat(iB(t)) } }
 
 fun ftoiB(iB) { fun (t:Float) { floatToInt(iB(t)) } }
 
+fun span(f, lst) {
+    switch(lst) {
+        case [] -> ([], [])
+        case (x::xs) ->
+            if (f(x)) {
+                var (rs, ls) = span(f, xs);
+                (x::rs, ls)
+            } else {
+                ([], lst)
+            }
+    }
+}
+
 var time = fun (t:Float) { t };
 
 fun fasterB(fB, xB) {
@@ -390,7 +403,6 @@ fun compose(user) {
 }
 
 # [WEB] ==========================================
-
 fun pressed(s) client {
     if (s == getCookie(s)) {
         setCookie(s, "");
@@ -398,19 +410,6 @@ fun pressed(s) client {
     } else {
         setCookie(s, s);
         false
-    }
-}
-
-fun span(f, lst) {
-    switch(lst) {
-        case [] -> ([], [])
-        case (x::xs) ->
-            if (f(x)) {
-                var (rs, ls) = span(f, xs);
-                (x::rs, ls)
-            } else {
-                ([], lst)
-            }
     }
 }
 
