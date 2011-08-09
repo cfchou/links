@@ -521,14 +521,20 @@ fun compose() {
                 `sizeof` toPairB(const(3.0), const(3.0)); 
 
     #-- rectangle
-    var r1 = rect() `at` toPairB(px `fAddB` const(50.0), py) 
+    var r1 = rect() `at` const((100.0, 300.0))
+                    `sizeof` const((80.0, 60.0));
+    var r2 = rotateAboutA(r1,
+                         slowerB(time() `fModB` const(360.0), const(3.0)), 
+                         #time() `fModB` const(360.0), 
+                         const((100.0, 300.0)));
+    #-- rectangle
+    var r5 = rect() `at` toPairB(px `fAddB` const(50.0), py) 
               `sizeof` toPairB(const(20.0), const(20.0));
 
-    var r2 = rotateAboutA(r1,
-                         slowerB(time() `fModB` const(360.0),
-                            const(5.0)), 
+    var r6 = rotateAboutA(r5,
+                         slowerB(time() `fModB` const(360.0), const(5.0)), 
                          toPairB(px, py));
-    var r3 = r2 `skewX` const(45.0);
+    var r7 = r6 `skewX` const(45.0);
 
     #-- text
     var t1 = text() `withText` clocktime() `at` 
@@ -539,7 +545,7 @@ fun compose() {
     var pg = polygon() `withPoints` pts;
     
     svg("svg1",
-        pg `over` t1 `over` p1 `over` d2 `over` r3 `over` m3 `over` m2,
+        pg `over` t1 `over` p1 `over` d2 `over` r2 `over` m3 `over` m2,
         const(800.0), const(600.0))
 }
 

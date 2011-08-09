@@ -55,17 +55,6 @@ fun toPairB(xB, yB) { fun (t:Float) { (xB(t), yB(t)) } }
 sig toBPair : (Beh((a, b))) -> (Beh(a), Beh(b))
 fun toBPair(xB) { (fstB(xB), sndB(xB)) } 
 
-sig toListB : ([Beh((a, b))]) -> Beh([(a, b)])
-fun toListB(lB) {
-    fun (t:Float) {
-        fun f(xs, xB) {
-            xB(t) :: xs
-        }
-        fold_left(f, [], lB)
-    }
-}
-
-
 sig const : (a) -> Beh(a)
 fun const(v) { fun (t:Float) { v } }
 
@@ -176,10 +165,8 @@ sig sizeof : (SBeh, Beh(FPair)) -> SBeh
 fun sizeof(elmB, cB) {
     fun (attr:Attrs) {
         fun (t:Float) {
-            #var new = (attr with width = attr.width `fAddB` fstB(cB),
-            #                     height = attr.height `fAddB` sndB(cB));
-            var new = (attr with width = fstB(cB),
-                                 height = sndB(cB));
+            var new = (attr with width = attr.width `fAddB` fstB(cB),
+                                 height = attr.height `fAddB` sndB(cB));
             elmB(new)(t)
         } 
     }
@@ -191,7 +178,8 @@ fun skewX(elmB, aB) {
         fun (t:Float) {
             debug("---------skewX");
             var new = (attr with transform = 
-                        attr.transform ++ [SkewX(aB)]);
+                        SkewX(aB) :: attr.transform);
+                        #attr.transform ++ [SkewX(aB)]);
             elmB(new)(t)
         } 
     }
@@ -265,10 +253,8 @@ fun tformString(f) {
                     intToString(floatToInt(y)) ^^ ")"
             case Scale(bh) ->
                 var (x, y) = bh(t);
-                #"scale(" ^^ intToString(floatToInt(x)) ^^ ", " ^^
-                #    intToString(floatToInt(y)) ^^ ")"
-                "scale(" ^^ floatToString(x) ^^ ", " ^^
-                    floatToString(y) ^^ ")"
+                "scale(" ^^ intToString(floatToInt(x)) ^^ ", " ^^
+                    intToString(floatToInt(y)) ^^ ")"
             case SkewX(bh) ->
                 "skewX(" ^^ intToString(floatToInt(bh(t))) ^^ ")" 
             case SkewY(bh) ->
@@ -289,8 +275,8 @@ fun multiTFormString(fs) {
     fold_left(f, const(""), map(tformString, fs))
 }
 
-sig withImage : (SBeh, Beh(String)) -> SBeh
-fun withImage(elmB, pathB) {
+sig withImg : (SBeh, Beh(String)) -> SBeh
+fun withImg(elmB, pathB) {
     fun (attr:Attrs) {
         fun (t:Float) {
             elmB((attr with hrefImg = pathB))(t)
@@ -298,8 +284,8 @@ fun withImage(elmB, pathB) {
     }
 }
 
-sig alongPoints : (SBeh, Beh(Points)) -> SBeh
-fun alongPoints(elmB, ptsB) {
+sig withPoints : (SBeh, Beh(Points)) -> SBeh
+fun withPoints(elmB, ptsB) {
     fun (attr:Attrs) {
         fun (t:Float) {
             elmB((attr with points = ptsB))(t)
@@ -366,15 +352,6 @@ fun withStroke(elmB, colorB) {
     fun (attr:Attrs) {
         fun (t:Float) {
             elmB((attr with stroke = colorB))(t)
-        }
-    }
-}
-
-sig withStrokeWidth : (SBeh, Beh(Float)) -> SBeh
-fun withStrokeWidth(elmB, fB) {
-    fun (attr:Attrs) {
-        fun (t:Float) {
-            elmB((attr with strokeWidth = fB))(t)
         }
     }
 }
@@ -541,14 +518,14 @@ fun image() {
     }
 }
 
-fun topSVG(id, elmB, wB, hB) {
+fun svg(id, elmB, wB, hB) {
     fun (t:Float) {
         var sw = intToString(floatToInt(wB(t)));
         var sh = intToString(floatToInt(hB(t)));
         <svg xmlns="http://www.w3.org/2000/svg" version="1.1" 
         xmlns:xlink="http://www.w3.org/1999/xlink"
         id="{id}" width="{sw}" height="{sh}"
-        viewBox="0 0 {sw} {sh}" >
+        viewbox="0 0 {sw} {sh}" >
         <#>
         {elmB((posX = const(0.0), posY = const(0.0), width = const(1.0),
                height = const(1.0), fill = const("none"), 
@@ -564,133 +541,221 @@ fun topSVG(id, elmB, wB, hB) {
     }
 }
 
-fun svg(elmB) {
-    fun (attr:Attrs) {
-        fun (t:Float) {
-            var x = intToString(floatToInt(attr.posX(t)));
-            var y = intToString(floatToInt(attr.posY(t)));
-            var w = intToString(floatToInt(attr.width(t)));
-            var h = intToString(floatToInt(attr.height(t)));
+# [LAZY LIST]--------------------------------
+typename LLst(a) = mu x . ((){}~>[|Nil|Cons:(a,x)|]);
 
-            <svg xmlns="http://www.w3.org/2000/svg" version="1.1" 
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-            x="{x}" y="{y}"
-            width="{w}" height="{h}" >
-            <#>
-            {elmB(attr)(t)}
-            </#>
-            </svg>
+sig lhd: (LLst(a)) {}~> a
+fun lhd(llst) {
+    switch (llst()) {
+        case Nil -> error("lhd: empty list")
+        case Cons(x, _) -> x
+    }
+}
+
+sig ltl: (LLst(a)) {}~> LLst(a)
+fun ltl(llst) {
+    switch (llst()) {
+        case Nil -> error("ltl: empty list")
+        case Cons(_, lxs) -> lxs
+    }
+}
+
+sig llen: (LLst(a)) {}~> Int
+fun llen(llst) {
+    fun llen_ (llst, n) {
+        switch (llst()) {
+            case Nil -> n
+            case Cons(_, lxs) -> llen_(lxs, n + 1)
         }
+    }
+    llen_(llst, 0)
+}
+
+sig lmap: ((a) {}~> b, LLst(a)) {}~> LLst(b)
+fun lmap(f, llst) () {
+   switch(llst()) {
+       case Nil -> Nil
+       case Cons(x, lxs) -> Cons(f(x), lmap(f, lxs))
+    }
+}
+
+sig lfilter: ((a) {}~> Bool, LLst(a)) {}~> LLst(a)
+fun lfilter(f, llst) () {
+    switch (llst()) {
+        case Nil -> Nil
+        case Cons(x, lxs) ->
+            if (f(x)) {
+                Cons(x, lfilter(f, lxs))
+            } else {
+                lfilter(f, lxs)()
+            }
+    }
+}
+
+sig lselect: (LLst(a), Int) {}~> a
+fun lselect(llst, n) {
+    if (n == 0) {
+        lhd(llst)
+    } else {
+        lselect(ltl(llst), n - 1)
+    }
+}
+
+sig ltakeWhile: ((a) {}~> Bool, LLst(a)) {}~> LLst(a)
+fun ltakeWhile(f, llst) () {
+    switch (llst()) {
+        case Nil -> Nil
+        case Cons(x, lxs) ->
+            if (f(x)) {
+                Cons(x, ltakeWhile(f, lxs))
+            } else {
+                Nil
+            }
+    }
+}
+
+#sig ldropWhile: ((a) {}~> Bool, LLst(a)) {}~> LLst(a)
+fun ldropWhile(f, llst) () {
+    switch (llst()) {
+        case Nil -> Nil
+        case Cons(x, lxs) ->
+            if (f(x)) {
+                ldropWhile(f, lxs)()
+            } else {
+                Cons(x, lxs)
+            }
+    }
+}
+
+sig lfoldl: ((b, a) {}~> b, b, LLst(a)) ~> b
+fun lfoldl(f, b, llst) {
+    switch (llst()) {
+        case Nil -> b
+        case Cons(x, lxs) -> lfoldl(f, f(b, x), lxs)
+    }
+}
+
+sig lfoldr: ((a, b) {}~> b, b, LLst(a)) ~> b
+fun lfoldr(f, b, llst) {
+    switch (llst()) {
+        case Nil -> b
+        case Cons(x, lxs) -> f(x, lfoldr(f, b, lxs))
+    }
+}
+
+sig lappend: (LLst(a), LLst(a)) {}~> LLst(a)
+fun lappend(llst1, llst2) () {
+    switch(llst1()) {
+        case Nil -> llst2()
+        case Cons(x, lxs) -> Cons(x, lappend(lxs, llst2))
+    }
+}
+
+sig lreverse: (LLst(a)) {}~> LLst(a)
+fun lreverse(llst) {
+    fun f(lxs, x) () {
+        Cons(x, lxs)
+    }
+    lfoldl(f, fun() { Nil }, llst)
+}
+
+sig lzip: (LLst(a), LLst(a)) {}~> LLst((a, a))
+fun lzip(llst1, llst2) () {
+    switch (llst1()) {
+        case Nil -> Nil
+        case Cons(x, lxs) -> 
+            switch (llst2()) {
+                case Nil -> Nil
+                case Cons(y, lys) -> 
+                    Cons((x, y), lzip(lxs, lys))
+            }
+    }
+}
+
+sig lunzip: (LLst((a, b))) {}~> (LLst(a), LLst(b))
+fun lunzip(llst) {
+    switch(llst()) {
+        case Nil -> (fun () { Nil }, fun () { Nil })
+        case Cons((a, b), lxs) ->
+            var (las, lbs) = lunzip(lxs);
+            (fun () { Cons(a, las) }, fun () { Cons(b, lbs) })
     }
 }
 
 # --------------------------------
-#typename Event(a) = (Float){}~>[(Float, a)];
-typename Event(a) = Beh([(Float, a)]);
+typename LEvent(a) = Beh(LLst((Float, a)));
 
-typename UEvent(a, b) = Event([|EDown:(a, b)|EMove:(a, b)|EUp:(a, b)|]);
 # [HANDLERS] ------------------
 # +=>
-sig handleE : ((Float, a){}~>b, Event(a)) -> Event(b)
-fun handleE(f, evt) {
+sig handleLE : ((Float, a){}~>b, LEvent(a)) -> LEvent(b)
+fun handleLE(f, evt) {
     fun (t:Float) {
         var f2 = fun ((te, a)) {
                      (te, f(te, a))
                  };
-        map(f2, evt(t))
+        lmap(f2, evt(t))
     }
 }
 
 # ==>
-sig mapE : ((a){}~>b, Event(a)) -> Event(b)
-fun mapE(f, evt) {
+sig mapLE : ((a){}~>b, LEvent(a)) -> LEvent(b)
+fun mapLE(f, evt) {
     var f2 = fun (_, a) {
                  f(a)
              };
-    handleE(f2, evt)
+    handleLE(f2, evt)
 }
 
 #-=>
-sig justE : (Event(a), b) -> Event(b)
-fun justE(evt, b) {
+sig constLE : (LEvent(a), b) -> LEvent(b)
+fun constLE(evt, b) {
     var f = fun (_, _) { b };
-    handleE(f, evt)
+    handleLE(f, evt)
 }
 
-
-sig filterE : ((Float, a){}~>Bool, Event(a)) -> Event(a)
-fun filterE(f, evt) {
+sig filterLE : ((Float, a){}~>Bool, LEvent(a)) -> LEvent(a)
+fun filterLE(f, evt) {
     fun (t:Float) {
         var f2 = fun ((te, a)) {
                      f(te, a)
                  };
-        filter(f2, evt(t))
+        lfilter(f2, evt(t))
     }
 }
-
-#sig latterE : (Float, Event(a)) -> Event(a)
-#fun latterE (ms, evt) {
-#    fun (t:Float) {
-#        var f2 = fun ((te, _)) {
-#                    te > t +. ms  
-#                 };
-#        filter(f2, evt(t))
-#    }
-#}
 
 # ------- 
-sig switcher : (Beh(a), Event(Beh(a))) -> Beh(a)
-fun switcher(b, evt) {
+sig lswitcher : (Beh(a), LEvent(Beh(a))) -> Beh(a)
+fun lswitcher(b, evt) {
     fun (t:Float) {
-        var (_, lst) = unzip(takeWhile(fun ((te, _)) { te < t }, evt(t)));
-        var lst2 = b::lst;
+        #fun g ((_, e)) { e }
+        #var (_, lst) = lunzip(ldropWhile(f, evt(t)));
+        #var lst = lmap(g, ldropWhile(f, evt(t)));
+
         # either b or last behaviour in the event stream
-        select(lst2, length(lst2) - 1)(t)
-    }
-}
-
-sig stepper : (a, Event(a)) -> Beh(a)
-fun stepper(a, evt) {
-    switcher(const(a), mapE(const, evt))
-}
-
-sig snapshot : (Event(a), Beh(b)) ~> Event((a, b)) 
-fun snapshot(evt, xB) {
-    fun (t:Float) {
-        var f = fun ((te, a)) {
-                    (te, (a, xB(te)))
-                };
-        map(f, evt(t))
-    }
-}
-
-sig snapshot2 : (Event(a), Beh(b)) ~> Event(b) 
-fun snapshot2(evt, xB) {
-    fun (t:Float) {
-        var f = fun ((te, _)) {
-                    (te, xB(te))
-                };
-        map(f, evt(t))
-    }
-}
-
-fun createE(mgr) (t) {
-    spawnWait {
-        mgr ! MQuery(t, self());
-        var lst = recv ();
-        #debug("createE-------" ^^ intToString(length(lst)));
-        fun (t2:Float) {
-            lst
+        switch (evt(t)()) {
+            case Nil -> 
+                debug("------------------ Nil");
+                b(t)
+            case Cons((_, x), _) ->
+                debug("++++++++++++++++++ not Nil");
+                x(t)
         }
     }
 }
 
-#================================
-sig mouseClickE: (UEvent(Float, Float)) {}~> Event (FPair)
-fun mouseClickE(user) {
+sig lstepper : (a, LEvent(a)) -> Beh(a)
+fun lstepper(a, evt) {
+    lswitcher(const(a), mapLE(const, evt))
+}
+
+
+# --------------------------------
+# mouse click event constructor
+# mouseClickLE : (LEvent ([|EClick:(a, b)|EDown:(a, b)|EMove:(a, b)|EUp:(a, b)|])) -> LEvent ((a, b))
+fun mouseClickLE(user) {
     var f = fun (t, a) {
                 switch(a) {
-                    case EUp(_, _) ->
+                    case EClick(_, _) ->
                         true
                     case _ -> false
                 }
@@ -698,46 +763,17 @@ fun mouseClickE(user) {
     var f2 = fun (a) {
                 switch(a) {
                     case EMove(x, y) -> (x, y)
+                    case EClick(x, y) -> (x, y)
                     case EDown(x, y) -> (x, y)
                     case EUp(x, y) -> (x, y)
                 }
              };
 
-    f2 `mapE` (f `filterE` user)
+    f2 `mapLE` (f `filterLE` user)
 }
 
-#\t -> [(td, ((xd, yd), (\t -> [(tu, (xu, yu))])))]
-#sig mouseDownE:
-#((Float) {}~> [(Time, [|EDown:(Float, Float)|EUp:(Float, Float)|_|])]) -> 
-#(Float) {}~> [(Time, ((Float, Float), (Time) -> [(Time, (Float, Float))]))]
-#    (Float) {}~> [(Time, ((Float, Float), (Time) -> [(Time, (Float, Float))]))]
-#(Float) {}~> [(Time, ((Float, Float), Event(FPair)))]
-sig mouseDownE: (UEvent(Float, Float)) {}~>
-                    Event((FPair, Event(FPair)))
-fun mouseDownE(user) {
-    fun (t:Float) {
-        var f1 = fun (eds, a) {
-                    switch (a) {
-                        case (td, EDown(x, y)) ->
-                            var e = (td, ((x, y), fun (t:Float) { [] }));
-                            e::eds
-                        case (tu, EUp(x, y)) ->
-                            switch (eds) {
-                                case [] -> []
-                                case ((td, (a, _))::es) ->
-                                    var e = (td, (a, 
-                                        fun (t:Float) { [(tu, (x, y))] }));
-                                    e::es
-                            }
-                        case _ -> eds
-                    }
-                };
-        reverse(fold_left(f1, [], user(t)))
-    }
-}
-
-sig mouseMoveE: (UEvent(Float, Float)) {}~> Event (FPair)
-fun mouseMoveE(user) {
+#sig mouseMoveLE : (Event(a)) -> Event(FPair)
+fun mouseMoveLE(user) {
     var f = fun (_, a) {
                 switch(a) {
                     case EMove(_, _) ->
@@ -748,18 +784,41 @@ fun mouseMoveE(user) {
     var f2 = fun (a) {
                 switch(a) {
                     case EMove(x, y) -> (x, y)
+                    case EClick(x, y) -> (x, y)
                     case EDown(x, y) -> (x, y)
                     case EUp(x, y) -> (x, y)
                 }
              };
 
-    f2 `mapE` (f `filterE` user)
+    f2 `mapLE` (f `filterLE` user)
 }
 
-sig mouseMoveB: (Event (FPair)) -> Beh (FPair)
-fun mouseMoveB(mmE) {
-    (0.0, 0.0) `stepper` mmE
+
+#\t -> [(td, ((xd, yd), (\t -> [(tu, (xu, yu))])))]
+#fun mouseDownLE(user) {
+
+fun mouseMoveLB(mmE) {
+    (0.0, 0.0) `lstepper` mmE
 }
+
+# --------------------------------
+#typename Event(a) = (Float){}~>[(Float, a)];
+#typename Event(a) = Beh([(Float, a)]);
+
+#================================
+# universal event constructor
+# createE: (Process ({ hear:[|MQuery:(a, Process ({ hear:b|_ }))|_|]|_ })) 
+#           -> (a) ~> (Float) -> b
+fun createE(mgr) (t:Float) {
+    spawnWait {
+        mgr ! MQuery(t, self());
+        var lst = recv ();
+        fun (t2:Float) {
+            lst
+        }
+    }
+}
+
 
 # [COMPOSE] ==========================================
 
@@ -771,138 +830,33 @@ var waggle = cos;
 var pWiggle = const(1.0) `fAddB` wiggle;
 var pWaggle = const(1.0) `fAddB` waggle;
 
-# [FIXME] not accurate
-fun clocktime() {
-    fun (t:Float) {
-        var k = intToDate(floatToInt(t));
-        #var k = intToDate(serverTime());
-        intToString(k.hours) ^^ ":" ^^ intToString(k.minutes) ^^ ":" ^^ 
-        intToString(k.seconds) 
-    }
-}
-
-# [FIXME] Lazy eval required
-fun swapColor(clr1, mE, clr2) {
-    var f = fun (clr) {
-                if (clr == clr1) {
-                    const(clr2)
-                } else {
-                    const(clr1)
-                }
-            };
-    #sig switcher : (Beh(a), Event(Beh(a))) -> Beh(a)
-    #sig mapE : ((a){}~>b, Event(a)) -> Event(b)
-    #sig snapshot2 : (Event(a), Beh(b)) ~> Event(b) 
-    const(clr1) `switcher` mapE(f, mE `snapshot2` swapColor(clr1, mE, clr2))
-}
-
-# [FIXME] call by name required
-fun swapColor2(clr1, mE, clr2) {
-    var f = fun () {
-        switch(getCookie("circlecolor")) {
-            case clr1 ->
-                setCookie("circlecolor", clr2);
-                clr2
-            case clr2 ->
-                setCookie("circlecolor", clr1);
-                clr1
-        }
-    };
-    #sig switcher : (Beh(a), Event(Beh(a))) -> Beh(a)
-    #sig mapE : ((a){}~>b, Event(a)) -> Event(b)
-    #sig snapshot2 : (Event(a), Beh(b)) ~> Event(b) 
-    const(getCookie("circlecolor")) `switcher` (mE `justE` const(f()))
-}
-
-fun equalB(aB, bB) {
-    fun (t:Float) {
-        aB(t) == bB(t)
-    }
-}
-
-fun suffle(idx) {
-    fun (t:Float) {
-        var tt = floatToInt(t);
-        var d = mod(tt + idx, 4);
-        debug("======" ^^ intToString(d) ^^ "-----" ^^ intToString(tt));
-        switch (d) {
-            case 0 -> "photos_files/IMG_5293.JPG"
-            case 1 -> "photos_files/IMG_5299.JPG"
-            case 2 -> "photos_files/IMG_5308.JPG"
-            case 3 -> "photos_files/IMG_5224.JPG"
-        }
-    }
-}
-
-fun clickMapB(mdE, oldB, newB, f) {
-    var fback = fun ((_, e)) {
-                    newB `switcher` mapE(f, e)
-                };
-    oldB `switcher` mapE(fback, mdE)
-}
-
-fun clickFlipB(mdE, oldB, newB) {
-    var fback = fun ((_, e)) {
-                    newB `switcher` (e `justE` oldB)
-                };
-    oldB `switcher` mapE(fback, mdE)
-}
-
-
-fun clickFlipRegion(mdE, oldB, newB) {
-    var fRgn = fun (td, ((xd, yd), _)) {
-                    if (xd < 50.0 || 130.0 < xd || yd < 50.0 || 110.0 < yd) {
-                        false
-                    } else {
-                        true
-                    }
-               };
-
-    var fBack = fun ((_, e)) {
-                    newB `switcher` (e `justE` oldB)
-                };
-    oldB `switcher` mapE(fBack, filterE(fRgn, mdE))
-}
-
-
 fun pointAdd(aB, bB) {
     toPairB(fstB(aB) `fAddB` fstB(bB), sndB(aB) `fAddB` sndB(bB))
 }
 
 fun compose(user) {
+    var mmE = mouseMoveLE(user);
+    #var mdE = mouseDownLE(user);
+    var mcE = mouseClickLE(user);
+    #-- mouse move behaviour
+    var mmB = mouseMoveLB(mmE);
     
-    var mmE = mouseMoveE(user);
-    var mdE = mouseDownE(user);
-    var mmB = mouseMoveB(mmE);
-    
+    # temporarily move
+    #var dragMmB = clickFlipB(mdE, const((80.0, 60.0)), mmB);
+
     # permenantly move
-    var afterMUp = fun ((_, e)) {
-                      mmB `switcher` mapE(const, e)
-                  };
-    var drag2MmB = const((100.0, 100.0)) `switcher` mapE(afterMUp, mdE);
+    #var afterMUp = fun ((x, y)) { const((x, y)) };
+    #var dragMmB2 = clickMapB(mdE, const((280.0, 60.0)), mmB, afterMUp);
 
-    var frame = rect() `at` drag2MmB
-                    `sizeof` const((80.0, 60.0))
-                    `withStrokeWidth` const(2.0)
-                    `withStroke` const("gray")
-                    `withColor` const("none"); 
+    #var img2 = clickFlipB(mdE, const("photos_files/IMG_5224.JPG"), 
+    #    const("photos_files/IMG_5293.JPG")); 
+    var c1 = ellipse() `at` mmB 
+                       `sizeof` const((50.0, 50.0))
+                       `withColor` const("red");
 
-    var img = image() `withImage` const("photos_files/IMG_5224.JPG")
-                      `at` const((0.0, 0.0)) 
-                      `sizeof` const((400.0, 300.0)); 
 
-    var negx = const(0.0) `fSubB` fstB(drag2MmB);
-    var negy = const(0.0) `fSubB` sndB(drag2MmB);
-    var imgBig = img `translate` toPairB(negx, negy)
-                     `scale` const((4.0, 4.0));
-                    
-
-    var magnified = svg(imgBig) `at` const((410.0, 0.0))
-                                `sizeof` const((320.0, 240.0));
-                                
-
-    topSVG(svg_child_id,
-        frame `over` img `over` magnified,
+    svg("svg1",
+        c1,
         const(800.0), const(600.0))
 }
 
@@ -917,35 +871,31 @@ fun pressed(s) client {
     }
 }
 
-fun evtMgr(evts) client {
+fun evtMgr(evts:LLst(?)) client {
     receive {
         case MQuery((t, proc)) -> 
-            var f = fun ((t2, _)) {
-                        t2 < t
-                    };
-            var (xs, ys) = span(f, evts);
-            proc ! xs;
-
-            # discard all MMove before t, except for the last MMove
-            var f2 = fun (e, (es, em)) {
-                        switch (e) {
-                            case (_, EMove(_, _)) ->
-                                switch (em) {
-                                    case [] -> (e::es, [e]) # last MMove
-                                    case _ -> (es, em)
-                                }
-                            case _ -> (e::es, em)
-                        }
-                     };
-            var (mm, _) = fold_right(f2, ([], []), xs);
-
-            evtMgr(mm ++ ys)
+              var f = fun ((t2, _)) {
+                          t2 > t
+                      };
+              var xs = ldropWhile(f, evts);
+              proc ! xs;
+              evtMgr(evts)
         case MMove(new) -> # (Float, EMove(Float, Float))
-            evtMgr(evts ++ [new])
+            var xs = fun () {
+                        Cons(new, evts)
+                        #Nil
+                     };
+            evtMgr(xs)
+            #evtMgr(evts)
+        case MClick(new) -> # (Float, EClick(Float, Float))
+            evtMgr(fun() { Cons(new, evts) })
+            #evtMgr(evts)
         case MDown(new) -> # (Float, EDown(Float, Float))
-            evtMgr(evts ++ [new])
+            evtMgr(fun() { Cons(new, evts) })
+            #evtMgr(evts)
         case MUp(new) -> # (Float, EUp(Float, Float))
-            evtMgr(evts ++ [new])
+            evtMgr(fun() { Cons(new, evts) })
+            #evtMgr(evts)
         #case _ ->
     }
 }
@@ -980,35 +930,51 @@ fun draw(user, scene, tEnd) client {
     } else { }
 }
 
-
 fun container() {
-    var mouseMgr = spawn { evtMgr([]) };
+    var mouseMgr = spawn { evtMgr(fun () { Nil }) };
     var user = createE(mouseMgr);
 
     <#>
+    <button id="press1" type="button" 
+    l:onclick="{
+                   ignore(spawn { drawInit(user, compose, 30000) })
+               }">draw image1</button>
+
     <div id="svgbasics" >
     <svg xmlns="http://www.w3.org/2000/svg" version="1.1" 
     xmlns:xlink="http://www.w3.org/1999/xlink"
     width="800" height="600"
-    viewBox="0 0 800 600" 
+    viewbox="0 0 800 600" 
     l:onmousedown="{var t = getTime(event);
+                debug("= = = = = =" ^^ intToString(t));
                 mouseMgr ! MDown(intToFloat(t),
                                      EDown(intToFloat(getPageX(event)),
                                             intToFloat(getPageY(event))))}"
     l:onmouseup="{var t = getTime(event);
+                debug("= = = = = =" ^^ intToString(t));
                 mouseMgr ! MUp(intToFloat(t),
                                      EUp(intToFloat(getPageX(event)),
                                             intToFloat(getPageY(event))))}"
+    l:onclick="{var t = getTime(event);
+                debug("= = = = = =" ^^ intToString(t));
+                mouseMgr ! MClick(intToFloat(t),
+                                     EClick(intToFloat(getPageX(event)),
+                                            intToFloat(getPageY(event))))}" 
     l:onmousemove="{mouseMgr ! MMove(intToFloat(getTime(event)),
                                      EMove(intToFloat(getPageX(event)),
                                             intToFloat(getPageY(event))))}" > 
-    <g id="{svg_parent_id}"> </g>
+
+    <line x1="0" y1="0" x2="300" y2="0" style="stroke:red;stroke-width:5" />
+    <line x1="0" y1="0" x2="0" y2="200" style="stroke:red ;stroke-width:5" />
+
+    <g id="{svg_parent_id}">
+
+    <line x1="0" y1="0" x2="300" y2="0" style="stroke:green;stroke-width:5" />
+    <line x1="0" y1="0" x2="0" y2="200" style="stroke:green ;stroke-width:5" />
+
+    </g>
     </svg>
     </div>
-    <button id="press1" type="button" 
-    l:onclick="{
-                   ignore(spawn { drawInit(user, compose, 10000) })
-               }">draw image</button>
     </#>
 }
 

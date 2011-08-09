@@ -55,17 +55,6 @@ fun toPairB(xB, yB) { fun (t:Float) { (xB(t), yB(t)) } }
 sig toBPair : (Beh((a, b))) -> (Beh(a), Beh(b))
 fun toBPair(xB) { (fstB(xB), sndB(xB)) } 
 
-sig toListB : ([Beh((a, b))]) -> Beh([(a, b)])
-fun toListB(lB) {
-    fun (t:Float) {
-        fun f(xs, xB) {
-            xB(t) :: xs
-        }
-        fold_left(f, [], lB)
-    }
-}
-
-
 sig const : (a) -> Beh(a)
 fun const(v) { fun (t:Float) { v } }
 
@@ -176,10 +165,8 @@ sig sizeof : (SBeh, Beh(FPair)) -> SBeh
 fun sizeof(elmB, cB) {
     fun (attr:Attrs) {
         fun (t:Float) {
-            #var new = (attr with width = attr.width `fAddB` fstB(cB),
-            #                     height = attr.height `fAddB` sndB(cB));
-            var new = (attr with width = fstB(cB),
-                                 height = sndB(cB));
+            var new = (attr with width = attr.width `fAddB` fstB(cB),
+                                 height = attr.height `fAddB` sndB(cB));
             elmB(new)(t)
         } 
     }
@@ -191,7 +178,8 @@ fun skewX(elmB, aB) {
         fun (t:Float) {
             debug("---------skewX");
             var new = (attr with transform = 
-                        attr.transform ++ [SkewX(aB)]);
+                        SkewX(aB) :: attr.transform);
+                        #attr.transform ++ [SkewX(aB)]);
             elmB(new)(t)
         } 
     }
@@ -265,10 +253,8 @@ fun tformString(f) {
                     intToString(floatToInt(y)) ^^ ")"
             case Scale(bh) ->
                 var (x, y) = bh(t);
-                #"scale(" ^^ intToString(floatToInt(x)) ^^ ", " ^^
-                #    intToString(floatToInt(y)) ^^ ")"
-                "scale(" ^^ floatToString(x) ^^ ", " ^^
-                    floatToString(y) ^^ ")"
+                "scale(" ^^ intToString(floatToInt(x)) ^^ ", " ^^
+                    intToString(floatToInt(y)) ^^ ")"
             case SkewX(bh) ->
                 "skewX(" ^^ intToString(floatToInt(bh(t))) ^^ ")" 
             case SkewY(bh) ->
@@ -289,8 +275,8 @@ fun multiTFormString(fs) {
     fold_left(f, const(""), map(tformString, fs))
 }
 
-sig withImage : (SBeh, Beh(String)) -> SBeh
-fun withImage(elmB, pathB) {
+sig withImg : (SBeh, Beh(String)) -> SBeh
+fun withImg(elmB, pathB) {
     fun (attr:Attrs) {
         fun (t:Float) {
             elmB((attr with hrefImg = pathB))(t)
@@ -298,8 +284,8 @@ fun withImage(elmB, pathB) {
     }
 }
 
-sig alongPoints : (SBeh, Beh(Points)) -> SBeh
-fun alongPoints(elmB, ptsB) {
+sig withPoints : (SBeh, Beh(Points)) -> SBeh
+fun withPoints(elmB, ptsB) {
     fun (attr:Attrs) {
         fun (t:Float) {
             elmB((attr with points = ptsB))(t)
@@ -366,15 +352,6 @@ fun withStroke(elmB, colorB) {
     fun (attr:Attrs) {
         fun (t:Float) {
             elmB((attr with stroke = colorB))(t)
-        }
-    }
-}
-
-sig withStrokeWidth : (SBeh, Beh(Float)) -> SBeh
-fun withStrokeWidth(elmB, fB) {
-    fun (attr:Attrs) {
-        fun (t:Float) {
-            elmB((attr with strokeWidth = fB))(t)
         }
     }
 }
@@ -541,14 +518,14 @@ fun image() {
     }
 }
 
-fun topSVG(id, elmB, wB, hB) {
+fun svg(id, elmB, wB, hB) {
     fun (t:Float) {
         var sw = intToString(floatToInt(wB(t)));
         var sh = intToString(floatToInt(hB(t)));
         <svg xmlns="http://www.w3.org/2000/svg" version="1.1" 
         xmlns:xlink="http://www.w3.org/1999/xlink"
         id="{id}" width="{sw}" height="{sh}"
-        viewBox="0 0 {sw} {sh}" >
+        viewbox="0 0 {sw} {sh}" >
         <#>
         {elmB((posX = const(0.0), posY = const(0.0), width = const(1.0),
                height = const(1.0), fill = const("none"), 
@@ -564,31 +541,10 @@ fun topSVG(id, elmB, wB, hB) {
     }
 }
 
-fun svg(elmB) {
-    fun (attr:Attrs) {
-        fun (t:Float) {
-            var x = intToString(floatToInt(attr.posX(t)));
-            var y = intToString(floatToInt(attr.posY(t)));
-            var w = intToString(floatToInt(attr.width(t)));
-            var h = intToString(floatToInt(attr.height(t)));
-
-            <svg xmlns="http://www.w3.org/2000/svg" version="1.1" 
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-            x="{x}" y="{y}"
-            width="{w}" height="{h}" >
-            <#>
-            {elmB(attr)(t)}
-            </#>
-            </svg>
-        }
-    }
-}
-
 # --------------------------------
 #typename Event(a) = (Float){}~>[(Float, a)];
 typename Event(a) = Beh([(Float, a)]);
 
-typename UEvent(a, b) = Event([|EDown:(a, b)|EMove:(a, b)|EUp:(a, b)|]);
 # [HANDLERS] ------------------
 # +=>
 sig handleE : ((Float, a){}~>b, Event(a)) -> Event(b)
@@ -611,8 +567,8 @@ fun mapE(f, evt) {
 }
 
 #-=>
-sig justE : (Event(a), b) -> Event(b)
-fun justE(evt, b) {
+sig constE : (Event(a), b) -> Event(b)
+fun constE(evt, b) {
     var f = fun (_, _) { b };
     handleE(f, evt)
 }
@@ -628,15 +584,15 @@ fun filterE(f, evt) {
     }
 }
 
-#sig latterE : (Float, Event(a)) -> Event(a)
-#fun latterE (ms, evt) {
-#    fun (t:Float) {
-#        var f2 = fun ((te, _)) {
-#                    te > t +. ms  
-#                 };
-#        filter(f2, evt(t))
-#    }
-#}
+sig latterE : (Float, Event(a)) -> Event(a)
+fun latterE (ms, evt) {
+    fun (t:Float) {
+        var f2 = fun ((te, _)) {
+                    te > t +. ms  
+                 };
+        filter(f2, evt(t))
+    }
+}
 
 # ------- 
 sig switcher : (Beh(a), Event(Beh(a))) -> Beh(a)
@@ -686,11 +642,11 @@ fun createE(mgr) (t) {
 }
 
 #================================
-sig mouseClickE: (UEvent(Float, Float)) {}~> Event (FPair)
+
 fun mouseClickE(user) {
     var f = fun (t, a) {
                 switch(a) {
-                    case EUp(_, _) ->
+                    case EClick(_, _) ->
                         true
                     case _ -> false
                 }
@@ -698,6 +654,28 @@ fun mouseClickE(user) {
     var f2 = fun (a) {
                 switch(a) {
                     case EMove(x, y) -> (x, y)
+                    case EClick(x, y) -> (x, y)
+                    case EDown(x, y) -> (x, y)
+                    case EUp(x, y) -> (x, y)
+                }
+             };
+
+    f2 `mapE` (f `filterE` user)
+}
+
+#sig mouseMoveE : (Event(a)) -> Event(FPair)
+fun mouseMoveE(user) {
+    var f = fun (_, a) {
+                switch(a) {
+                    case EMove(_, _) ->
+                        true
+                    case _ -> false
+                }
+            };
+    var f2 = fun (a) {
+                switch(a) {
+                    case EMove(x, y) -> (x, y)
+                    case EClick(x, y) -> (x, y)
                     case EDown(x, y) -> (x, y)
                     case EUp(x, y) -> (x, y)
                 }
@@ -707,13 +685,6 @@ fun mouseClickE(user) {
 }
 
 #\t -> [(td, ((xd, yd), (\t -> [(tu, (xu, yu))])))]
-#sig mouseDownE:
-#((Float) {}~> [(Time, [|EDown:(Float, Float)|EUp:(Float, Float)|_|])]) -> 
-#(Float) {}~> [(Time, ((Float, Float), (Time) -> [(Time, (Float, Float))]))]
-#    (Float) {}~> [(Time, ((Float, Float), (Time) -> [(Time, (Float, Float))]))]
-#(Float) {}~> [(Time, ((Float, Float), Event(FPair)))]
-sig mouseDownE: (UEvent(Float, Float)) {}~>
-                    Event((FPair, Event(FPair)))
 fun mouseDownE(user) {
     fun (t:Float) {
         var f1 = fun (eds, a) {
@@ -736,27 +707,7 @@ fun mouseDownE(user) {
     }
 }
 
-sig mouseMoveE: (UEvent(Float, Float)) {}~> Event (FPair)
-fun mouseMoveE(user) {
-    var f = fun (_, a) {
-                switch(a) {
-                    case EMove(_, _) ->
-                        true
-                    case _ -> false
-                }
-            };
-    var f2 = fun (a) {
-                switch(a) {
-                    case EMove(x, y) -> (x, y)
-                    case EDown(x, y) -> (x, y)
-                    case EUp(x, y) -> (x, y)
-                }
-             };
-
-    f2 `mapE` (f `filterE` user)
-}
-
-sig mouseMoveB: (Event (FPair)) -> Beh (FPair)
+#sig mouseMoveB : (FPair) -> Beh(FPair) 
 fun mouseMoveB(mmE) {
     (0.0, 0.0) `stepper` mmE
 }
@@ -796,6 +747,58 @@ fun swapColor(clr1, mE, clr2) {
     const(clr1) `switcher` mapE(f, mE `snapshot2` swapColor(clr1, mE, clr2))
 }
 
+#colorStream() : Beh( ()->Cons(clr, (fun () { colorStream() })) )
+fun colorStream(clr1, mE, clr2) {
+    var f = fun (clr) {
+                if (clr == clr1) {
+                    const(clr2)
+                } else {
+                    const(clr1)
+                }
+            };
+    #clrB::(fun () { colorStream(clr1, mE, clr2) })
+    fun () {
+        var evts = mE `snapshot3` colorStream(clr1, mE, clr2);
+        const(clr1) `switcher` mapE(f, evts)
+
+        const(clr1) `switcher` mapE(f, mE `snapshot2` swapColor(clr1, mE, clr2))
+    }
+    fun (t:Float) {
+        fun () {
+            var xB = colorStream(clr1, mE, clr2);
+            var f = fun ((te, a)) {
+                        (te, xB(te)) #(te, ()->Cons())
+                    };
+            lmap(f, xB(t)())
+        }
+    }
+}
+
+fun lmap(f, llist) {
+    switch (llist) {
+        case Nil -> Nil
+        case Cons(x, xs) -> Cons(f(x), fun() { lmap(f(xs())) } )
+    }
+}
+
+sig snapshot3 : (Event(a), Beh(()->[Beh(b)])) ~> Event(b) 
+fun snapshot3(evt, xB) {
+    fun (t:Float) {
+        var f = fun ((te, a)) {
+                    var (b::_) = xB(te)();
+                    (te, b)
+                };
+        map(f, evt(t))
+    }
+}
+
+fun bar(a, lexpr) { lexpr() }
+fun foo(a) {
+    fun () {
+        bar(a, foo(a))
+    }
+}
+
 # [FIXME] call by name required
 fun swapColor2(clr1, mE, clr2) {
     var f = fun () {
@@ -811,7 +814,7 @@ fun swapColor2(clr1, mE, clr2) {
     #sig switcher : (Beh(a), Event(Beh(a))) -> Beh(a)
     #sig mapE : ((a){}~>b, Event(a)) -> Event(b)
     #sig snapshot2 : (Event(a), Beh(b)) ~> Event(b) 
-    const(getCookie("circlecolor")) `switcher` (mE `justE` const(f()))
+    const(getCookie("circlecolor")) `switcher` (mE `constE` const(f()))
 }
 
 fun equalB(aB, bB) {
@@ -843,7 +846,7 @@ fun clickMapB(mdE, oldB, newB, f) {
 
 fun clickFlipB(mdE, oldB, newB) {
     var fback = fun ((_, e)) {
-                    newB `switcher` (e `justE` oldB)
+                    newB `switcher` (e `constE` oldB)
                 };
     oldB `switcher` mapE(fback, mdE)
 }
@@ -859,50 +862,34 @@ fun clickFlipRegion(mdE, oldB, newB) {
                };
 
     var fBack = fun ((_, e)) {
-                    newB `switcher` (e `justE` oldB)
+                    newB `switcher` (e `constE` oldB)
                 };
     oldB `switcher` mapE(fBack, filterE(fRgn, mdE))
 }
 
 
-fun pointAdd(aB, bB) {
-    toPairB(fstB(aB) `fAddB` fstB(bB), sndB(aB) `fAddB` sndB(bB))
-}
-
 fun compose(user) {
-    
     var mmE = mouseMoveE(user);
     var mdE = mouseDownE(user);
+    var mcE = mouseClickE(user);
+    #-- mouse move behaviour
     var mmB = mouseMoveB(mmE);
     
+    # temporarily move
+    #var dragMmB = clickFlipB(mdE, const((80.0, 60.0)), mmB);
+
     # permenantly move
-    var afterMUp = fun ((_, e)) {
-                      mmB `switcher` mapE(const, e)
-                  };
-    var drag2MmB = const((100.0, 100.0)) `switcher` mapE(afterMUp, mdE);
+    var afterMUp = fun ((x, y)) { const((x, y)) };
+    var dragMmB2 = clickMapB(mdE, const((280.0, 60.0)), mmB, afterMUp);
 
-    var frame = rect() `at` drag2MmB
-                    `sizeof` const((80.0, 60.0))
-                    `withStrokeWidth` const(2.0)
-                    `withStroke` const("gray")
-                    `withColor` const("none"); 
+    var img2 = clickFlipB(mdE, const("photos_files/IMG_5224.JPG"), 
+        const("photos_files/IMG_5293.JPG")); 
 
-    var img = image() `withImage` const("photos_files/IMG_5224.JPG")
-                      `at` const((0.0, 0.0)) 
-                      `sizeof` const((400.0, 300.0)); 
+    var photo2 = image() `withImg` img2 `at` dragMmB2
+                    `sizeof` const((80.0, 60.0));
 
-    var negx = const(0.0) `fSubB` fstB(drag2MmB);
-    var negy = const(0.0) `fSubB` sndB(drag2MmB);
-    var imgBig = img `translate` toPairB(negx, negy)
-                     `scale` const((4.0, 4.0));
-                    
-
-    var magnified = svg(imgBig) `at` const((410.0, 0.0))
-                                `sizeof` const((320.0, 240.0));
-                                
-
-    topSVG(svg_child_id,
-        frame `over` img `over` magnified,
+    svg("svg1",
+        photo2,
         const(800.0), const(600.0))
 }
 
@@ -941,6 +928,8 @@ fun evtMgr(evts) client {
 
             evtMgr(mm ++ ys)
         case MMove(new) -> # (Float, EMove(Float, Float))
+            evtMgr(evts ++ [new])
+        case MClick(new) -> # (Float, EClick(Float, Float))
             evtMgr(evts ++ [new])
         case MDown(new) -> # (Float, EDown(Float, Float))
             evtMgr(evts ++ [new])
@@ -984,31 +973,49 @@ fun draw(user, scene, tEnd) client {
 fun container() {
     var mouseMgr = spawn { evtMgr([]) };
     var user = createE(mouseMgr);
+    var scene = compose;
 
     <#>
+    <button id="press1" type="button" 
+    l:onclick="{
+                   ignore(spawn { drawInit(user, scene, 30000) })
+               }">draw image1</button>
+
     <div id="svgbasics" >
     <svg xmlns="http://www.w3.org/2000/svg" version="1.1" 
     xmlns:xlink="http://www.w3.org/1999/xlink"
     width="800" height="600"
-    viewBox="0 0 800 600" 
+    viewbox="0 0 800 600" 
     l:onmousedown="{var t = getTime(event);
+                debug("= = = = = =" ^^ intToString(t));
                 mouseMgr ! MDown(intToFloat(t),
                                      EDown(intToFloat(getPageX(event)),
                                             intToFloat(getPageY(event))))}"
     l:onmouseup="{var t = getTime(event);
+                debug("= = = = = =" ^^ intToString(t));
                 mouseMgr ! MUp(intToFloat(t),
                                      EUp(intToFloat(getPageX(event)),
                                             intToFloat(getPageY(event))))}"
+    l:onclick="{var t = getTime(event);
+                debug("= = = = = =" ^^ intToString(t));
+                mouseMgr ! MClick(intToFloat(t),
+                                     EClick(intToFloat(getPageX(event)),
+                                            intToFloat(getPageY(event))))}" 
     l:onmousemove="{mouseMgr ! MMove(intToFloat(getTime(event)),
                                      EMove(intToFloat(getPageX(event)),
                                             intToFloat(getPageY(event))))}" > 
-    <g id="{svg_parent_id}"> </g>
+
+    <line x1="0" y1="0" x2="300" y2="0" style="stroke:red;stroke-width:5" />
+    <line x1="0" y1="0" x2="0" y2="200" style="stroke:red ;stroke-width:5" />
+
+    <g id="{svg_parent_id}">
+
+    <line x1="0" y1="0" x2="300" y2="0" style="stroke:green;stroke-width:5" />
+    <line x1="0" y1="0" x2="0" y2="200" style="stroke:green ;stroke-width:5" />
+
+    </g>
     </svg>
     </div>
-    <button id="press1" type="button" 
-    l:onclick="{
-                   ignore(spawn { drawInit(user, compose, 10000) })
-               }">draw image</button>
     </#>
 }
 

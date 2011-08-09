@@ -162,8 +162,16 @@ fun svgA (id, elmB, wB, hB) {
     }
 }
 
+# [LAZY] ==========================================
+# apply(fun () { expr });
+fun apply(llst) { llst() }
+
 # [VList] ==========================================
 typename VList(a) = mu x.[|Nil|Cons:(a,x)|];
+#typename QList(a) = (())->[|QNil:()|QCon:(a, QList(a))|];
+#typename QList(a) = ()->[|QNil|QCons:(a,QList(a))|];
+#typename QList(a) = mu x.(()->[|QNil|QCons:(a,x)|]);
+
 
 #unzip : ([(a, b)]) ~> ([a], [b])
 sig vUnzip : (VList((a, b))) ~> (VList(a), VList(b))
@@ -185,7 +193,7 @@ fun vTakeWhile(f, vs) {
             if (f(a)) {
                Cons(a, vTakeWhile(f, xs)) 
             } else {
-                vTakeWhile(f, xs)
+                Nil
             }
     }
 }
