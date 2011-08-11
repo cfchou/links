@@ -65,7 +65,6 @@ fun toListB(lB) {
     }
 }
 
-
 sig const : (a) -> Beh(a)
 fun const(v) { fun (t:Float) { v } }
 
@@ -176,8 +175,6 @@ sig sizeof : (SBeh, Beh(FPair)) -> SBeh
 fun sizeof(elmB, cB) {
     fun (attr:Attrs) {
         fun (t:Float) {
-            #var new = (attr with width = attr.width `fAddB` fstB(cB),
-            #                     height = attr.height `fAddB` sndB(cB));
             var new = (attr with width = fstB(cB),
                                  height = sndB(cB));
             elmB(new)(t)
@@ -265,8 +262,6 @@ fun tformString(f) {
                     intToString(floatToInt(y)) ^^ ")"
             case Scale(bh) ->
                 var (x, y) = bh(t);
-                #"scale(" ^^ intToString(floatToInt(x)) ^^ ", " ^^
-                #    intToString(floatToInt(y)) ^^ ")"
                 "scale(" ^^ floatToString(x) ^^ ", " ^^
                     floatToString(y) ^^ ")"
             case SkewX(bh) ->
