@@ -870,40 +870,30 @@ var pWaggle = const(1.0) `fAddB` waggle;
 
 sig compose : (Beh (ELLst)) {}~> Beh(Xml)
 fun compose(user) client {
-    var mdE = mouseDownLE(user);
-    var muE = mouseUpLE(user);
-    var mmE = mouseMoveLE(user);
-    var mmB = mouseMoveLB(mmE);
-    
-    #fun drag (_) {
-    #    mmB `lswitcher` mapLE(const, muE `lsnapshot2` mmB)
-    #}
-    #var drag2mmB = const((100.0, 100.0)) `lswitcher` mapLE(drag, mdE);
-    fun drag (td, _) {
-        fun afterDown(tu, _) {
-            tu > td
-        }
-        mmB `lswitcher` mapLE(const, filterLE(afterDown, muE) `lsnapshot2` mmB)
-    }
-    var drag2mmB = const((100.0, 100.0)) `lswitcher` handleLE(drag, mdE);
+    # [-1, 1]
+    var wiggle = sin;
+    var waggle = cos;
 
+    # [0, 2]
+    var wiggle2 = const(1.0) `fAddB` wiggle;
+    var waggle2 = const(1.0) `fAddB` waggle;
 
-    var clickB = (100.0, 100.0) `lstepper` (muE `lsnapshot2` mmB);
-    var moveclickB = mmB `lswitcher` mapLE(const, (muE `lsnapshot2` mmB));
+    var fig = image() `withImage` const("images/karate.png");
 
-    var clr = const("red") `lswitcher` justLE(muE, const("green"));
+    var x = slowerB(const(200.0) `fMulB` wiggle2, const(5000.0));
+    var y = x;
+    var bigKick = fig `at` toPairB(x, y)
+                      `sizeof` const((100.0, 100.0));
 
-
-    var c1 = ellipse() `at` drag2mmB 
-    #var c1 = ellipse() `at` mmB 
-    #var c1 = ellipse() `at` clickB 
-    #var c1 = ellipse() `at` const((100.0, 100.0))
-                       `sizeof` const((50.0, 50.0))
-                       #`withColor` clr;
-                       `withColor` const("red");
+    var x2 = x `fAddB` slowerB(wiggle `fMulB` const(100.0),
+                               const(300.0));
+    var y2 = y `fAddB` slowerB(waggle `fMulB` const(100.0),
+                               const(300.0));
+    var smallKick = fig `at` toPairB(x2, y2)
+                        `sizeof` const((50.0, 50.0));
 
     topSVG(svg_child_id,
-        c1,
+        smallKick `over` bigKick,
         const(800.0), const(600.0))
 }
 
@@ -967,7 +957,7 @@ fun draw(user, scene, tEnd) client {
     } else { }
 }
 
-fun container() client {
+fun container() {
     var mouseMgr = spawn { evtMgr((mmEvts = lnil(),
                                    mdEvts = lnil(),
                                    muEvts = lnil())) };

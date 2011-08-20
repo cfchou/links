@@ -870,40 +870,29 @@ var pWaggle = const(1.0) `fAddB` waggle;
 
 sig compose : (Beh (ELLst)) {}~> Beh(Xml)
 fun compose(user) client {
-    var mdE = mouseDownLE(user);
-    var muE = mouseUpLE(user);
     var mmE = mouseMoveLE(user);
     var mmB = mouseMoveLB(mmE);
-    
-    #fun drag (_) {
-    #    mmB `lswitcher` mapLE(const, muE `lsnapshot2` mmB)
-    #}
-    #var drag2mmB = const((100.0, 100.0)) `lswitcher` mapLE(drag, mdE);
-    fun drag (td, _) {
-        fun afterDown(tu, _) {
-            tu > td
+
+    var circle = ellipse() `at` delayB(mmB, const(300.0))
+                           `sizeof` const((50.0, 50.0))
+                           `withColor` const("red");
+
+    fun appendStringB(sB1, sB2) {
+        fun (t:Float) {
+            sB1(t) ^^ ", " ^^ sB2(t)
         }
-        mmB `lswitcher` mapLE(const, filterLE(afterDown, muE) `lsnapshot2` mmB)
     }
-    var drag2mmB = const((100.0, 100.0)) `lswitcher` handleLE(drag, mdE);
-
-
-    var clickB = (100.0, 100.0) `lstepper` (muE `lsnapshot2` mmB);
-    var moveclickB = mmB `lswitcher` mapLE(const, (muE `lsnapshot2` mmB));
-
-    var clr = const("red") `lswitcher` justLE(muE, const("green"));
-
-
-    var c1 = ellipse() `at` drag2mmB 
-    #var c1 = ellipse() `at` mmB 
-    #var c1 = ellipse() `at` clickB 
-    #var c1 = ellipse() `at` const((100.0, 100.0))
-                       `sizeof` const((50.0, 50.0))
-                       #`withColor` clr;
-                       `withColor` const("red");
-
+    var coord = appendStringB(ftosB(fstB(mmB)), ftosB(sndB(mmB)));
+    var coordPos = toPairB(fstB(mmB) `fAddB` const(30.0),
+                           sndB(mmB) `fAddB` const(20.0));
+    var displayCoord = text() `at` coordPos
+                              `withText` coord
+                              `withStrokeWidth` const(0.0) 
+                              `withFontSize` const(16.0) 
+                              `withColor` const("black");
+    
     topSVG(svg_child_id,
-        c1,
+        displayCoord `over` circle,
         const(800.0), const(600.0))
 }
 
@@ -967,7 +956,7 @@ fun draw(user, scene, tEnd) client {
     } else { }
 }
 
-fun container() client {
+fun container() {
     var mouseMgr = spawn { evtMgr((mmEvts = lnil(),
                                    mdEvts = lnil(),
                                    muEvts = lnil())) };
@@ -988,8 +977,9 @@ fun container() client {
     </svg>
     </div>
     <button id="press1" type="button" 
-    l:onclick="{ ignore(spawn { drawInit(user, compose, 30000) }) }">
-        draw image</button>
+    l:onclick="{
+                   ignore(spawn { drawInit(user, compose, 30000) })
+               }">draw image</button>
     </#>
 }
     #<g id="{svg_parent_id}" transform="translate(-10,-35)">

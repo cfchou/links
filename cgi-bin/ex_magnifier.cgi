@@ -875,10 +875,7 @@ fun compose(user) client {
     var mmE = mouseMoveLE(user);
     var mmB = mouseMoveLB(mmE);
     
-    #fun drag (_) {
-    #    mmB `lswitcher` mapLE(const, muE `lsnapshot2` mmB)
-    #}
-    #var drag2mmB = const((100.0, 100.0)) `lswitcher` mapLE(drag, mdE);
+    # dragging effect
     fun drag (td, _) {
         fun afterDown(tu, _) {
             tu > td
@@ -887,23 +884,28 @@ fun compose(user) client {
     }
     var drag2mmB = const((100.0, 100.0)) `lswitcher` handleLE(drag, mdE);
 
+    # image and a small frame on its top
+    var img = image() `withImage` const("images/kenting.jpg")
+                      `at` const((0.0, 0.0)) 
+                      `sizeof` const((400.0, 300.0)); 
+    var frame = rect() `at` drag2mmB
+                    `sizeof` const((80.0, 60.0))
+                    `withStrokeWidth` const(2.0)
+                    `withStroke` const("gray")
+                    `withColor` const("none"); 
 
-    var clickB = (100.0, 100.0) `lstepper` (muE `lsnapshot2` mmB);
-    var moveclickB = mmB `lswitcher` mapLE(const, (muE `lsnapshot2` mmB));
+    # transform image
+    var negx = const(0.0) `fSubB` fstB(drag2mmB);
+    var negy = const(0.0) `fSubB` sndB(drag2mmB);
+    var imgBig = img `translate` toPairB(negx, negy)
+                     `scale` const((4.0, 4.0));
 
-    var clr = const("red") `lswitcher` justLE(muE, const("green"));
-
-
-    var c1 = ellipse() `at` drag2mmB 
-    #var c1 = ellipse() `at` mmB 
-    #var c1 = ellipse() `at` clickB 
-    #var c1 = ellipse() `at` const((100.0, 100.0))
-                       `sizeof` const((50.0, 50.0))
-                       #`withColor` clr;
-                       `withColor` const("red");
-
+    # place transformed image in the nested svg
+    var magnified = svg(imgBig) `at` const((410.0, 0.0))
+                                `sizeof` const((320.0, 240.0));
+                                
     topSVG(svg_child_id,
-        c1,
+        frame `over` img `over` magnified,
         const(800.0), const(600.0))
 }
 
@@ -967,7 +969,7 @@ fun draw(user, scene, tEnd) client {
     } else { }
 }
 
-fun container() client {
+fun container() {
     var mouseMgr = spawn { evtMgr((mmEvts = lnil(),
                                    mdEvts = lnil(),
                                    muEvts = lnil())) };
@@ -988,8 +990,9 @@ fun container() client {
     </svg>
     </div>
     <button id="press1" type="button" 
-    l:onclick="{ ignore(spawn { drawInit(user, compose, 30000) }) }">
-        draw image</button>
+    l:onclick="{
+                   ignore(spawn { drawInit(user, compose, 30000) })
+               }">draw image</button>
     </#>
 }
     #<g id="{svg_parent_id}" transform="translate(-10,-35)">
